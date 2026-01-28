@@ -1,0 +1,18 @@
+# 핵심 라이브러리 (검증된 버전)
+paddlepaddle==2.6.2
+paddleocr==2.7.0.3
+
+# 이미지 처리
+pillow==10.1.0
+opencv-python==4.8.1.78
+
+# 데이터 처리
+numpy==1.24.3
+pandas==1.5.3
+
+# 정규표현식 (파이썬 내장이지만 명시)
+# regex는 필요시 추가
+
+# 테스트 (나중에 필요하면)
+pytest==7.4.3
+pytest-cov==4.1.0
