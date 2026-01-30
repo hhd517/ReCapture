@@ -35,6 +35,16 @@ class Photo(models.Model):
     height = models.IntegerField(null=True, blank=True)
     taken_at = models.DateTimeField(null=True, blank=True)
     
+    # Exact duplicate 관계 저장
+    duplicate_of = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="duplicates",
+        help_text="Exact duplicate인 경우, 원본 Photo",
+    )
+    
     # Soft delete
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
