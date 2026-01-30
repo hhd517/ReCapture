@@ -1,0 +1,20 @@
+<h2>사진 상세 정보</h2>
+{% if photo.image %}
+    <img src="{{ photo.image.url }}" style="max-width: 500px;">
+{% endif %}
+
+<form method="POST">
+    {% csrf_token %}
+    <div>
+        <label>메모:</label>
+        <input type="text" name="memo" value="{{ photo.memo|default_if_none:'' }}" placeholder="메모를 입력하세요">
+    </div>
+    <div>
+        <label>북마크:</label>
+        <input type="checkbox" name="is_bookmarked" {% if photo.is_bookmarked %}checked{% endif %}>
+    </div>
+    <button type="submit">저장하기</button>
+</form>
+
+<hr>
+<a href="{% url 'gallery:trash_list' %}">휴지통 가기</a>
