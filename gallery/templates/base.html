@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Re:Capture</title>
     <style>
-        /* 간단한 드롭다운 스타일 */
         .notification-dropdown { position: relative; display: inline-block; }
         .dropdown-content {
             display: none; position: absolute; right: 0;
@@ -17,7 +16,14 @@
 <body>
     <header style="background: #eee; padding: 10px; display: flex; justify-content: space-between;">
         <h1><a href="/">Re:Capture</a></h1>
-        
+        <nav>
+            {% if user.is_authenticated %}
+                <span>{{ user.username }}님 환영합니다!</span>
+                <a href="{% url 'accounts:mypage' %}" style="margin-left: 15px;">마이페이지</a>
+            {% else %}
+                <a href="/accounts/google/login/?process=login">구글 로그인</a>
+            {% endif %}
+        </nav>
         <div class="notification-dropdown">
             <button>🔔 알림 <span id="noti-count">{{ unread_notifications_count }}</span></button>
             <div class="dropdown-content">
