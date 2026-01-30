@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 import datetime
+from datetime import timedelta
 
 class Photo(models.Model):
     # 1. 사용자 연결 (로그인 기능 관련)
@@ -31,13 +32,14 @@ class Photo(models.Model):
     def __str__(self):
         return f"[{self.user.username}] {self.category_main} - {self.created_at}"
 
-    # n일 이상 확인 안 하면 자동 휴지통 이동 여부 체크하는 메서드
     def check_auto_trash(self, days=7):
-        if not self.is_confirmed and not self.is_trashed:
-            if timezone.now() > self.created_at + datetime.timedelta(days=days):
-                self.is_trashed = True
-                self.trashed_at = timezone.now()
-                self.save()
+        # 미확인(is_confirmed=False) 상태이고, 생성된 지 n일이 지났다면
+        if not self.is_confirmed and self.created_at <= timezone.now() - timedelta(days=days):
+            self.is_trashed = True
+            self.trashed_at = timezone.now()
+            self.save()
+            return True
+        return False
 
 class Notification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
