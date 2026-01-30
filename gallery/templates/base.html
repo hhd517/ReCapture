@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>RE:ceipt</title>
+    <style>
+        /* 간단한 드롭다운 스타일 */
+        .notification-dropdown { position: relative; display: inline-block; }
+        .dropdown-content {
+            display: none; position: absolute; right: 0;
+            background-color: #f9f9f9; min-width: 250px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 1;
+        }
+        .notification-dropdown:hover .dropdown-content { display: block; }
+    </style>
+</head>
+<body>
+    <header style="background: #eee; padding: 10px; display: flex; justify-content: space-between;">
+        <h1><a href="/">RE:ceipt</a></h1>
+        
+        <div class="notification-dropdown">
+            <button>🔔 알림 <span id="noti-count">{{ unread_notifications_count }}</span></button>
+            <div class="dropdown-content">
+                {% for noti in latest_notifications %}
+                    <div style="padding:10px; border-bottom:1px solid #ddd; {% if not noti.is_read %}background:#fff9e6;{% endif %}">
+                        <small>[{{ noti.get_notif_type_display }}]</small><br>
+                        {{ noti.message }}
+                    </div>
+                {% empty %}
+                    <div style="padding:10px;">새로운 알림이 없습니다.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </header>
+
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+</body>
+</html>

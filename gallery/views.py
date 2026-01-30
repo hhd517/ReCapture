@@ -1,6 +1,12 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
-from .models import Photo
+from .models import Photo, Notification
+
+@login_required
+def photo_list(request):
+    # 휴지통에 가지 않은 본인의 사진들만 최신순으로 가져오기
+    photos = Photo.objects.filter(user=request.user, is_trashed=False).order_by('-created_at')
+    return render(request, 'gallery/photo_list.html', {'photos': photos})
 
 @login_required
 def photo_detail(request, pk):
@@ -23,8 +29,21 @@ def photo_detail(request, pk):
 @login_required
 def trash_list(request):
     # 휴지통에 버려진 사진들만 조회
-    trashed_photos = Photo.objects.filter(user=request.user, is_trashed=True).order_set('-trashed_at')
+    trashed_photos = Photo.objects.filter(user=request.user, is_trashed=True).order_by('-trashed_at')
     return render(request, 'gallery/trash_list.html', {'photos': trashed_photos})
+
+@login_required
+def restore_photo(request, pk):
+    # 본인의 사진 중 휴지통에 있는 것만 가져오기
+    photo = get_object_or_404(Photo, pk=pk, user=request.user, is_trashed=True)
+    
+    if request.method == 'POST':
+        photo.is_trashed = False
+        photo.trashed_at = None # 버려진 시간 초기화
+        photo.save()
+        return redirect('gallery:trash_list')
+        
+    return redirect('gallery:trash_list')
 
 @login_required
 def toggle_bookmark(request, pk):
@@ -32,4 +51,11 @@ def toggle_bookmark(request, pk):
     photo = get_object_or_404(Photo, pk=pk, user=request.user)
     photo.is_bookmarked = not photo.is_bookmarked
     photo.save()
+    return redirect(request.META.get('HTTP_REFERER', 'gallery:photo_list'))
+
+@login_required
+def mark_as_read(request, pk):
+    notification = get_object_or_404(Notification, pk=pk, user=request.user)
+    notification.is_read = True
+    notification.save()
     return redirect(request.META.get('HTTP_REFERER', 'gallery:photo_list'))

@@ -1,0 +1,15 @@
+<h2>📸 나의 Re:Capture 갤러리</h2>
+<div style="display: flex; flex-wrap: wrap; gap: 15px;">
+    {% for photo in photos %}
+        <div style="border: 1px solid #ddd; padding: 10px;">
+            <a href="{% url 'gallery:photo_detail' photo.pk %}">
+                <img src="{{ photo.image.url }}" style="width: 150px; height: 150px; object-fit: cover;">
+            </a>
+            <p>{{ photo.category_main|default:"미분류" }}</p>
+        </div>
+    {% empty %}
+        <p>업로드된 사진이 없습니다.</p>
+    {% endfor %}
+</div>
+<hr>
+<a href="{% url 'gallery:trash_list' %}">🗑️ 휴지통 보기</a>
