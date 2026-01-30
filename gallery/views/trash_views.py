@@ -7,12 +7,17 @@ from gallery.models import Photo
 import json
 
 # 1. 휴지통 목록 조회 (GET)
+@csrf_exempt
 @login_required
 def trash_list(request):
+    # GET: 휴지통 목록 화면 보여주기
     if request.method == 'GET':
-        trashed_photos = Photo.objects.filter(user=request.user, is_trashed=True).order_by('-trashed_at')
+        trashed_photos = Photo.objects.filter(user=request.user, is_trashed=True)
         return render(request, 'gallery/trash_list.html', {'photos': trashed_photos})
-    return JsonResponse({"success": False, "error": "Method not allowed"}, status=405)
+
+    # POST: 휴지통으로 이동시키기
+    elif request.method == 'POST':
+        return move_to_trash(request)
 
 # 2. 휴지통 이동 (POST)
 @csrf_exempt

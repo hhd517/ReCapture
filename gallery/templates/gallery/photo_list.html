@@ -3,6 +3,10 @@
 {% block content %}
 <h2>📸 나의 Re:Capture 갤러리</h2>
 
+<a href="{% url 'gallery:trash_list' %}" style="text-decoration: none; color: #666; font-size: 14px;">
+    🗑️ 휴지통 보기
+</a>
+
 <div class="filter-bar" style="margin-bottom: 20px; padding: 15px; background: #fdfdfd; border: 1px solid #eee; border-radius: 12px;">
     <a href="?" class="btn {% if not current_category and not is_bookmarked %}active{% endif %}">전체</a>
 
