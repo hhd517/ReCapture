@@ -1,15 +1,29 @@
-<h2>📸 나의 Re:Capture 갤러리</h2>
-<div style="display: flex; flex-wrap: wrap; gap: 15px;">
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>📸 나의 RE:ceipt 갤러리</h2>
+
+<div class="gallery-grid" style="display: flex; flex-wrap: wrap; gap: 15px;">
     {% for photo in photos %}
-        <div style="border: 1px solid #ddd; padding: 10px;">
+        <div class="photo-card" style="border: 1px solid #ddd; padding: 10px;">
             <a href="{% url 'gallery:photo_detail' photo.pk %}">
                 <img src="{{ photo.image.url }}" style="width: 150px; height: 150px; object-fit: cover;">
             </a>
-            <p>{{ photo.category_main|default:"미분류" }}</p>
+            <p>
+                <strong>분류:</strong> 
+                {% if photo.category %}
+                    {{ photo.category.name }}
+                {% else %}
+                    미분류
+                {% endif %}
+            </p>
+            
+            {% if photo.is_bookmarked %}
+                <span>⭐ 북마크됨</span>
+            {% endif %}
         </div>
     {% empty %}
         <p>업로드된 사진이 없습니다.</p>
     {% endfor %}
 </div>
-<hr>
-<a href="{% url 'gallery:trash_list' %}">🗑️ 휴지통 보기</a>
+{% endblock %}

@@ -1,21 +1,12 @@
-<h2>🗑️ 휴지통</h2>
-<p>미확인 상태로 7일이 지난 사진들이 이곳으로 이동되었습니다.</p>
-
-<div class="trash-container" style="display: flex; flex-wrap: wrap; gap: 20px;">
-    {% for photo in photos %}
-        <div class="trash-item" style="border: 1px solid #ccc; padding: 10px; width: 200px;">
-            <img src="{{ photo.image.url }}" style="width: 100%; filter: grayscale(100%);">
-            <p>{{ photo.created_at|date:"Y-m-d" }} 생성</p>
-            <p style="color: red;">{{ photo.trashed_at|date:"Y-m-d" }} 버려짐</p>
-            <form action="{% url 'gallery:restore_photo' photo.pk %}" method="POST">
-                {% csrf_token %}
-                <button type="submit">복구하기</button>
-            </form>
-        </div>
-    {% empty %}
-        <p>휴지통이 비어 있습니다.</p>
-    {% endfor %}
-</div>
-
-<hr>
-<a href="{% url 'gallery:photo_list' %}">메인 갤러리로 돌아가기</a>
+{% for photo in photos %}
+    <div class="trash-item">
+        <img src="{{ photo.image.url }}" style="filter: grayscale(80%); width: 100px;">
+        <p>삭제일: {{ photo.trashed_at|date:"Y-m-d" }}</p>
+        <p style="color: red;">영구 삭제 예정: {{ photo.expires_at|date:"Y-m-d" }}</p>
+        
+        <form action="{% url 'gallery:restore_photo' photo.pk %}" method="POST">
+            {% csrf_token %}
+            <button type="submit">복구</button>
+        </form>
+    </div>
+{% endfor %}

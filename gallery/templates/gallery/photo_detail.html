@@ -1,20 +1,46 @@
-<h2>사진 상세 정보</h2>
-{% if photo.image %}
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="detail-container">
     <img src="{{ photo.image.url }}" style="max-width: 500px;">
-{% endif %}
+    
+    <h3>상세 정보</h3>
+    <ul>
+        <li>카테고리: 
+            {% if photo.category.parent %}
+                {{ photo.category.parent.name }} > {{ photo.category.name }}
+            {% elif photo.category %}
+                {{ photo.category.name }}
+            {% else %}
+                미분류
+            {% endif %}
+        </li>
+        <li>등록일: {{ photo.created_at|date:"Y-m-d H:i" }}</li>
+    </ul>
 
-<form method="POST">
-    {% csrf_token %}
-    <div>
-        <label>메모:</label>
-        <input type="text" name="memo" value="{{ photo.memo|default_if_none:'' }}" placeholder="메모를 입력하세요">
+    <div class="memo-section">
+        <h4>메모</h4>
+        <textarea id="memo-content" rows="3">{{ photo.memo|default_if_none:"" }}</textarea>
+        <button onclick="saveMemo({{ photo.id }})">저장/수정</button>
     </div>
-    <div>
-        <label>북마크:</label>
-        <input type="checkbox" name="is_bookmarked" {% if photo.is_bookmarked %}checked{% endif %}>
-    </div>
-    <button type="submit">저장하기</button>
-</form>
+</div>
 
-<hr>
-<a href="{% url 'gallery:trash_list' %}">휴지통 가기</a>
+<script>
+function saveMemo(photoId) {
+    const content = document.getElementById('memo-content').value;
+    // 명세서 2번의 PUT 방식을 따르는 Fetch API 호출
+    fetch(`/gallery/memos/photos/${photoId}/`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ content: content })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) alert('메모가 저장되었습니다!');
+    });
+}
+</script>
+{% endblock %}
