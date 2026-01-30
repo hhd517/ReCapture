@@ -10,7 +10,7 @@ urlpatterns = [
     
     # 1. 사진 북마크
     path('bookmarks/', views.bookmark_list, name='bookmark_list'), # GET: 목록 조회
-    path('bookmarks/', views.add_bookmark, name='add_bookmark'),  # POST: 추가
+    path('bookmarks/add/', views.add_bookmark, name='add_bookmark'),  # POST: 추가
     path('bookmarks/<int:photoid>/', views.delete_bookmark, name='delete_bookmark'), # DELETE: 해제
     
     # 2. 사진 메모 (upsert 방식 적용)

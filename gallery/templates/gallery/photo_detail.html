@@ -5,6 +5,17 @@
     <img src="{{ photo.image.url }}" style="max-width: 500px;">
     
     <h3>상세 정보</h3>
+
+    <button id="bookmark-btn" 
+            onclick="toggleBookmark({{ photo.id }})" 
+            style="background: none; border: 1px solid #ddd; padding: 5px 10px; border-radius: 20px; cursor: pointer;">
+        {% if photo.is_bookmarked %}
+            <span id="bookmark-icon" style="color: orange;">⭐ 북마크 취소</span>
+        {% else %}
+            <span id="bookmark-icon" style="color: #888;">☆ 북마크 추가</span>
+        {% endif %}
+    </button>
+
     <ul>
         <li>카테고리: 
             {% if photo.category.parent %}
@@ -26,6 +37,40 @@
 </div>
 
 <script>
+function toggleBookmark(photoId) {
+    const icon = document.getElementById('bookmark-icon');
+    const isBookmarked = icon.innerText.includes('취소');
+    
+    // 북마크 상태에 따라 다른 URL과 Method 설정
+    const url = isBookmarked ? `/gallery/bookmarks/${photoId}/` : `/gallery/bookmarks/add/`;
+    const method = isBookmarked ? 'DELETE' : 'POST';
+    const body = isBookmarked ? null : JSON.stringify({ photoId: photoId });
+
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}' // CSRF 보안 토큰 필수
+        },
+        body: body
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            if (isBookmarked) {
+                icon.innerText = '☆ 북마크 추가';
+                icon.style.color = '#888';
+            } else {
+                icon.innerText = '⭐ 북마크 취소';
+                icon.style.color = 'orange';
+            }
+        } else {
+            alert('북마크 처리에 실패했습니다.');
+        }
+    })
+    .catch(err => console.error('Error:', err));
+}
+
 function saveMemo(photoId) {
     const content = document.getElementById('memo-content').value;
     // 명세서 2번의 PUT 방식을 따르는 Fetch API 호출
