@@ -123,39 +123,39 @@ def save_uploaded_file(user, uploaded_file: UploadedFile) -> Dict:
     final_path = os.path.join(paths["photo"], unique_name)
     thumb_path = os.path.join(paths["thumb"], unique_name)
 
-    # 1️⃣ 임시 저장
+    # 임시 저장
     with open(temp_path, "wb+") as f:
         for chunk in uploaded_file.chunks():
             f.write(chunk)
 
-    # 2️⃣ 이미지 로드
+    # 이미지 로드
     image = Image.open(temp_path)
     image = image.convert("RGB")  # 포맷 통일
 
     width, height = image.size
     file_size = uploaded_file.size
 
-    # 3️⃣ 해시 계산
+    # 해시 계산
     file_hash = _calculate_sha256(temp_path)
     image_hashes = _calculate_image_hashes(image)
 
-    # 4️⃣ 메타데이터
+    # 메타데이터
     taken_at = _extract_exif_taken_at(image)
 
-    # 5️⃣ 원본 저장
+    # 원본 저장
     image.save(final_path, format="JPEG", quality=95)
 
-    # 6️⃣ 썸네일 생성
+    # 썸네일 생성
     thumbnail = _create_thumbnail(image)
     thumbnail.save(thumb_path, format="JPEG", quality=85)
 
-    # 7️⃣ temp 파일 삭제
+    # temp 파일 삭제
     try:
         os.remove(temp_path)
     except OSError:
         pass
 
-    # 8️⃣ URL 구성
+    # URL 구성
     photo_url = f"{settings.MEDIA_URL}photos/{user_id}/{unique_name}"
     thumb_url = f"{settings.MEDIA_URL}thumbnails/{user_id}/{unique_name}"
 
@@ -171,4 +171,9 @@ def save_uploaded_file(user, uploaded_file: UploadedFile) -> Dict:
         "phash": image_hashes["phash"],
         "dhash": image_hashes["dhash"],
         "ahash": image_hashes["ahash"],
+
+        
+        # 내부 처리용(중복 시 파일 정리 등). 외부 응답에는 쓰지 않아도 됨.
+        "_final_path": final_path,
+        "_thumb_path": thumb_path,
     }
