@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 
 class Photo(models.Model):
     """사진 정보"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='photos')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='photo')
     
     # 파일 정보
     filename = models.CharField(max_length=255)

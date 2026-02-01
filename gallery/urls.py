@@ -4,6 +4,8 @@ from . import views
 app_name = 'gallery'
 
 urlpatterns = [
+    path('', views.photo_list, name='home'),
+    
     # 5. 통합 조회 API (전체 사진 + 갤러리 상태)
     path('photos/', views.photo_list, name='photo_list'),
     path('photos/<int:photoid>/', views.photo_detail, name='photo_detail'),

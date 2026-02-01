@@ -48,7 +48,7 @@ def google_authorize(request):
     
     try:
         # 환경 변수에서 redirect URI 가져오기
-        redirect_uri = os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:8000/api/v1/photos/google/callback')
+        redirect_uri = os.getenv('GOOGLE_PHOTOS_REDIRECT_URI', 'http://localhost:8000/api/v1/photos/google/callback')
         
         # 인증 URL 생성
         auth_url, state = GooglePhotosService.get_authorization_url(redirect_uri)

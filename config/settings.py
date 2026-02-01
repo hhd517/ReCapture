@@ -43,17 +43,17 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
-    # allauth (social login)
+    # Third party apps
+    'rest_framework',
+    'rest_framework.authtoken',
+
     'django.contrib.sites',
+
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
-
-    # DRF
-    'rest_framework',
-    'rest_framework.authtoken',
-
+    
     # Local apps
     'accounts',
     'photos',
@@ -64,8 +64,8 @@ INSTALLED_APPS = [
 SITE_ID = 1
 
 # 로그인 후 리다이렉트 경로
-LOGIN_REDIRECT_URL = '/'
-ACCOUNT_LOGOUT_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = '/gallery/'         
+ACCOUNT_LOGOUT_REDIRECT_URL = '/accounts/login/'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -148,8 +148,11 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 # Media files
-MEDIA_ROOT = os.getenv('MEDIA_ROOT', 'storage/')
 MEDIA_URL = os.getenv('MEDIA_URL', '/media/')
+MEDIA_ROOT = os.getenv(
+    'MEDIA_ROOT',
+    os.path.join(BASE_DIR, 'media')
+)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -171,12 +174,16 @@ AUTHENTICATION_BACKENDS = (
     'allauth.account.auth_backends.AuthenticationBackend',
 )
 
-import os
-from dotenv import load_dotenv
-load_dotenv()
-
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 GOOGLE_SECRET = os.getenv('GOOGLE_SECRET')
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APP": {
+            "client_id": os.getenv("GOOGLE_CLIENT_ID", ""),
+            "secret": os.getenv("GOOGLE_SECRET", ""),
+            "key": "",
+        },
+        "SCOPE": ["profile", "email"],
+    }
+}

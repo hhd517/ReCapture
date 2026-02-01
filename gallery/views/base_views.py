@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from gallery.models import Photo, Category
 
-@login_required
+@login_required(login_url='/accounts/login/')
 def photo_list(request):
     photos = Photo.objects.filter(user=request.user, is_trashed=False)
     categories = Category.objects.filter(user=request.user, parent=None)
@@ -36,7 +36,7 @@ def photo_list(request):
         'is_bookmarked': is_bookmarked == 'true'
     })
 
-@login_required
+@login_required(login_url='/accounts/login/')
 def photo_detail(request, photoid):
     photo = get_object_or_404(Photo, id=photoid, user=request.user)
     return render(request, 'gallery/photo_detail.html', {'photo': photo})

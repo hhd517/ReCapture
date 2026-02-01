@@ -39,11 +39,23 @@ class GooglePhotosService:
     @staticmethod
     def get_authorization_url(redirect_uri):
         """OAuth 인증 URL 생성"""
-        flow = Flow.from_client_secrets_file(
-            'credentials.json',
+        # ========== 수정: 환경 변수 사용 ==========
+        client_config = {
+            "web": {
+                "client_id": os.getenv('GOOGLE_PHOTOS_CLIENT_ID'),
+                "client_secret": os.getenv('GOOGLE_PHOTOS_CLIENT_SECRET'),
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": [redirect_uri]
+            }
+        }
+        
+        flow = Flow.from_client_config(
+            client_config,
             scopes=GooglePhotosService.SCOPES,
             redirect_uri=redirect_uri
         )
+        # ==========================================
         
         auth_url, state = flow.authorization_url(
             access_type='offline',
@@ -56,11 +68,23 @@ class GooglePhotosService:
     @staticmethod
     def exchange_code_for_tokens(code, redirect_uri):
         """인증 코드를 토큰으로 교환"""
-        flow = Flow.from_client_secrets_file(
-            'credentials.json',
+        # ========== 수정: 환경 변수 사용 ==========
+        client_config = {
+            "web": {
+                "client_id": os.getenv('GOOGLE_PHOTOS_CLIENT_ID'),
+                "client_secret": os.getenv('GOOGLE_PHOTOS_CLIENT_SECRET'),
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": [redirect_uri]
+            }
+        }
+        
+        flow = Flow.from_client_config(
+            client_config,
             scopes=GooglePhotosService.SCOPES,
             redirect_uri=redirect_uri
         )
+        # ==========================================
         
         flow.fetch_token(code=code)
         credentials = flow.credentials
