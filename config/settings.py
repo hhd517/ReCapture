@@ -43,16 +43,29 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
-    # Third party apps
+    # allauth (social login)
+    'django.contrib.sites',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+
+    # DRF
     'rest_framework',
     'rest_framework.authtoken',
-    
+
     # Local apps
     'accounts',
     'photos',
     'classification',
     'gallery',
 ]
+
+SITE_ID = 1
+
+# 로그인 후 리다이렉트 경로
+LOGIN_REDIRECT_URL = '/'
+ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -62,6 +75,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -77,6 +91,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'gallery.context_processors.notification_context',
             ],
         },
     },
@@ -151,3 +166,17 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
 }
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+)
+
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+GOOGLE_SECRET = os.getenv('GOOGLE_SECRET')
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
