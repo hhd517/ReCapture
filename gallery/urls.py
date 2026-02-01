@@ -24,4 +24,7 @@ urlpatterns = [
     path('trash/', views.trash_list, name='trash_list'), # GET: 목록 조회, POST: 임시 이동
     path('trash/<int:photoid>/restore/', views.restore_photo, name='restore_photo'), # POST: 복구
     path('trash/<int:photoid>/', views.permanent_delete, name='permanent_delete'), # DELETE: 영구 삭제
+
+    # 5. 세부 카테고리 만들기
+    path('categories/add/', views.add_category, name='add_category'),
 ]

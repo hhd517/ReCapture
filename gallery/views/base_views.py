@@ -5,14 +5,21 @@ from gallery.models import Photo, Category
 @login_required
 def photo_list(request):
     photos = Photo.objects.filter(user=request.user, is_trashed=False)
+    categories = Category.objects.filter(user=request.user, parent=None)
 
-    # 파라미터 가져오기
     category_id = request.GET.get('category_id')
+    sub_category_id = request.GET.get('sub_category_id')
     is_bookmarked = request.GET.get('bookmarked')
+
+    sub_categories = []
 
     # 1. 카테고리 필터 적용
     if category_id:
         photos = photos.filter(category_id=category_id)
+        sub_categories = Category.objects.filter(user=request.user, parent_id=category_id)
+
+        if sub_category_id:
+            photos = photos.filter(category_id=sub_category_id)
 
     # 2. 북마크 필터 적용
     if is_bookmarked == 'true':
@@ -23,7 +30,9 @@ def photo_list(request):
     return render(request, 'gallery/photo_list.html', {
         'photos': photos.order_by('-created_at'),
         'categories': categories,
+        'sub_categories': sub_categories,
         'current_category': int(category_id) if category_id else None,
+        'current_sub_category': int(sub_category_id) if sub_category_id else None,
         'is_bookmarked': is_bookmarked == 'true'
     })
 
