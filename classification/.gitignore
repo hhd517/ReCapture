@@ -1,0 +1,44 @@
+# 모델 파일 (전체 폴더)
+models/
+*.pth
+*.pt
+*.bin
+*.safetensors
+
+# 데이터
+train_data/
+test_data/
+train_text.csv
+*.jpg
+*.jpeg
+*.png
+
+# API 키
+google_credentials.json
+credentials.json
+api_keys.json
+.env
+.env.local
+
+# 파이썬
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# 가상환경
+venv/
+recapture_env/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

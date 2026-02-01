@@ -1,0 +1,19 @@
+#ocr
+
+paddlepaddle==2.6.2
+paddleocr==2.7.0.3
+
+#이미지처리
+
+pillow==10.1.0
+opencv-python==4.6.0.66
+numpy==1.24.3
+
+#딥러닝 프레임워크
+
+torch==2.1.0
+torchvision==0.16.0  # EfficientNet용 추가
+
+#Transformers (텍스트 모델)
+
+transformers==4.35.0
