@@ -1,44 +1,20 @@
-# OCR
-paddlepaddle==2.6.2
-paddleocr==2.7.0.3
+# Web Framework
+Django==4.2.17
+python-dotenv==1.2.1
 
-# 이미지 처리
-pillow==12.1.0
-opencv-python==4.6.0.66
-numpy==2.3.2
-
-# 딥러닝 프레임워크
-torch==2.9.1
+# AI / Deep Learning (PyTorch & Models)
+torch==2.1.0
 torchvision==0.16.0
+timm==1.0.24
+transformers==4.35.0
 
-# Transformers (텍스트 모델)
-transformers==4.57.3
-tokenizers==0.22.1
-safetensors==0.7.0
-huggingface-hub==0.36.0
+# Google Cloud Vision (OCR)
+google-cloud-vision==3.12.0
 
-# LangChain & RAG
-langchain==0.3.27
-langchain-core==0.3.75
-langchain-community==0.3.28
-langchain-text-splitters==0.3.9
-langgraph==0.6.3
-langgraph-checkpoint==2.1.1
-langgraph-prebuilt==0.6.3
-langsmith==0.4.10
-
-# Vector DB & 관련 라이브러리
-faiss-cpu==1.11.0.post1
-pgvector==0.4.1
-SQLAlchemy==2.0.45
-
-# 데이터 처리
-pandas==2.3.1
-dataclasses-json==0.6.7
-
-# 유틸리티
-python-dotenv==1.1.1
-pydantic==2.11.7
-pydantic-settings==2.10.1
-regex==2026.1.15
-tiktoken==0.9.0
+# Data Processing & Image Handling
+pandas==1.5.3
+numpy==1.24.3
+Pillow==10.1.0
+scikit-image==0.25.2
+tqdm==4.67.1
+openpyxl==3.1.5
