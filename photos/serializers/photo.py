@@ -1,6 +1,5 @@
 # photos/serializers/photo.py
 from rest_framework import serializers
-# from photos.models import Photo
 from gallery.models import Photo
 
 class ImportGoogleRequestSerializer(serializers.Serializer):
@@ -26,14 +25,12 @@ class PhotoSerializer(serializers.ModelSerializer):
             "id",
             "filename",
             "url",
-            "thumb_url",
             "file_size",
             "file_hash",
             "phash",
             "dhash",
             "ahash",
             "category",
-            "sub_category",
             "source",
             "google_id",
             "memo",
@@ -44,7 +41,7 @@ class PhotoSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = [
-            "id", "url", "thumb_url", "file_size",
+            "id", "url", "file_size",
             "file_hash", "phash", "dhash", "ahash",
             "source", "google_id",
             "width", "height", "taken_at",
@@ -55,4 +52,4 @@ class PhotoSerializer(serializers.ModelSerializer):
 class PhotoUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Photo
-        fields = ["category", "sub_category", "memo"]
+        fields = ["category", "memo"]

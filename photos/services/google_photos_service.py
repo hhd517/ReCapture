@@ -11,6 +11,9 @@ class GooglePhotosService:
     """Google Photos API 연동 서비스"""
     
     SCOPES = [
+        'openid',
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile',
         'https://www.googleapis.com/auth/photoslibrary.readonly',
     ]
     

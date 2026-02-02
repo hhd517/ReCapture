@@ -6,6 +6,14 @@ from .models import Category
 @receiver(post_save, sender=User)
 def create_default_categories(sender, instance, created, **kwargs):
     if created:
+        # "분류 전" 카테고리 먼저 생성 (최우선)
+        Category.objects.create(
+            user=instance,
+            name='분류 전',
+            category_key=None,  # 특수 카테고리로 category_key 없음
+            parent=None
+        )
+        
         # 6대 대분류 정의
         default_cats = [
             ('finance', '결제/금융'),
@@ -20,5 +28,5 @@ def create_default_categories(sender, instance, created, **kwargs):
                 user=instance,
                 name=name,
                 category_key=key,
-                parent=None # 대분류이므로 부모 없음
+                parent=None
             )

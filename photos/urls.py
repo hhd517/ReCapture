@@ -8,7 +8,7 @@ urlpatterns = [
     # 구글 연동 (1~4번)
     path('google/status', google.google_status, name='google-status'),
     path('google/authorize', google.google_authorize, name='google-authorize'),
-    path('google/callback', google.google_callback, name='google-callback'),
+    path('google/callback/', google.google_callback, name='google-callback'),
     path('google/unlink', google.google_unlink, name='google-unlink'),
     
     # 직접 업로드 (5번)

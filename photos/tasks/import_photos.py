@@ -3,7 +3,7 @@ from celery import shared_task
 from django.contrib.auth.models import User
 # from photos.models import GoogleCredential, ImportJob, Photo
 from photos.models import GoogleCredential, ImportJob
-from gallery.models import Photo
+from gallery.models import Photo, Category
 from photos.services.google_photos_service import GooglePhotosService
 from photos.services.import_service import ImportService
 from datetime import datetime
@@ -31,6 +31,16 @@ def import_google_photos_task(self, user_id, job_id, folder_id=None, dedupe=True
         
         # 구글 인증 정보 가져오기
         google_cred = GoogleCredential.objects.get(user=user, is_active=True)
+
+        # "분류 전" 카테고리 가져오기 (없으면 생성) 
+        unclassified_category, _ = Category.objects.get_or_create(
+            user=user,
+            name='분류 전',
+            defaults={
+                'category_key': None,
+                'parent': None
+            }
+        )
         
         # GooglePhotosService 초기화
         google_service = GooglePhotosService(google_cred)
@@ -80,19 +90,18 @@ def import_google_photos_task(self, user_id, job_id, folder_id=None, dedupe=True
                 # 사진 다운로드
                 google_service.download_photo(media_item, save_path)
                 
-                # TODO: 해시 계산, 썸네일 생성 등은 박정해님 파트와 연동
-                
-                # DB에 저장 (임시)
+                # DB에 저장 
                 Photo.objects.create(
                     user=user,
                     filename=filename,
+                    image=save_path, 
                     url=save_path,
-                    thumb_url='',  # TODO: 썸네일 생성 후 추가
                     file_hash='',  # TODO: 해시 계산 후 추가
                     phash='',
                     dhash='',
                     source='GOOGLE',
-                    google_id=google_id
+                    google_id=google_id,
+                    category=unclassified_category  
                 )
                 
                 job.done_count += 1

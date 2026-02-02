@@ -1,6 +1,13 @@
 # photos/api/import_job.py
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import SessionAuthentication
+
+# CSRF 체크 안 하는 SessionAuthentication
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        return
+
 from rest_framework.response import Response
 from rest_framework import status
 from photos.models import GoogleCredential, ImportJob
@@ -16,6 +23,7 @@ from photos.tasks.import_photos import import_google_photos_task
 
 # 6. 구글 포토에서 사진 가져오기
 @api_view(['POST'])
+@authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def import_from_google(request):
     """구글 포토에서 사진 가져오기 (비동기 작업 시작)"""
@@ -82,6 +90,7 @@ def import_from_google(request):
 
 # 7. Import 작업 진행 상황 조회
 @api_view(['GET'])
+@authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def get_import_job_status(request, job_id):
     """Import 작업 진행 상황 조회"""

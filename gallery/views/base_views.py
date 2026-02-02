@@ -12,11 +12,19 @@ def photo_list(request):
     is_bookmarked = request.GET.get('bookmarked')
 
     sub_categories = []
+    current_category_name = None
 
     # 1. 카테고리 필터 적용
     if category_id:
         photos = photos.filter(category_id=category_id)
         sub_categories = Category.objects.filter(user=request.user, parent_id=category_id)
+
+        # 현재 카테고리 이름 가져오기
+        try:
+            current_cat = Category.objects.get(id=category_id)
+            current_category_name = current_cat.name
+        except Category.DoesNotExist:
+            pass
 
         if sub_category_id:
             photos = photos.filter(category_id=sub_category_id)
@@ -33,6 +41,7 @@ def photo_list(request):
         'sub_categories': sub_categories,
         'current_category': int(category_id) if category_id else None,
         'current_sub_category': int(sub_category_id) if sub_category_id else None,
+        'current_category_name': current_category_name,
         'is_bookmarked': is_bookmarked == 'true'
     })
 
