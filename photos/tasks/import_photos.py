@@ -1,6 +1,7 @@
 # photos/tasks/import_photos.py
 from celery import shared_task
 from django.contrib.auth.models import User
+from django.conf import settings
 from photos.models import GoogleCredential, ImportJob
 from gallery.models import Photo, Category
 from photos.services.google_photos_service import GooglePhotosService
@@ -15,7 +16,6 @@ def import_google_photos_task(self, user_id, job_id, folder_id=None, dedupe=True
         job = ImportJob.objects.get(job_id=job_id)
 
         if not session_id:
-            # 모델에 저장돼있으면 꺼내쓰기
             if hasattr(job, "picker_session_id") and job.picker_session_id:
                 session_id = job.picker_session_id
 
@@ -53,9 +53,6 @@ def import_google_photos_task(self, user_id, job_id, folder_id=None, dedupe=True
         job.total_count = len(all_items)
         job.save(update_fields=["total_count"])
 
-        save_dir = f"storage/photos/{user.id}"
-        os.makedirs(save_dir, exist_ok=True)
-
         for media_item in all_items:
             try:
                 google_id = media_item.get("id")
@@ -73,15 +70,21 @@ def import_google_photos_task(self, user_id, job_id, folder_id=None, dedupe=True
                         job.save(update_fields=["skipped_count"])
                         continue
 
-                save_path = os.path.join(save_dir, filename)
+                media_subdir = f"photos/{user.id}"
+                relative_path = f"{media_subdir}/{filename}"
 
-                google_service.download_photo(media_item, save_path)
+                abs_dir = os.path.join(settings.MEDIA_ROOT, media_subdir)
+                os.makedirs(abs_dir, exist_ok=True)
+
+                abs_path = os.path.join(settings.MEDIA_ROOT, relative_path)
+
+                google_service.download_photo(media_item, abs_path)
 
                 Photo.objects.create(
                     user=user,
                     filename=filename,
-                    image=save_path,
-                    url=save_path,
+                    image=relative_path,
+                    url=relative_path,
                     file_hash="",
                     phash="",
                     dhash="",
