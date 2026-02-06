@@ -8,9 +8,7 @@ class Category(models.Model):
     BASIC_CATEGORIES = [
         ('finance', '결제/금융'),
         ('study_note', '학습/노트'),
-        ('shopping', '쇼핑 정보'),
-        ('schedule', '일정/예약'),
-        ('document', '문서/정보'),
+        ('info', '문서/정보'),
         ('others', '기타정보(비정보)'),
     ]
 
@@ -34,35 +32,6 @@ class Category(models.Model):
 
     def __str__(self):
         return f"[{self.get_category_key_display()}] {self.name}" if self.category_key else self.name
-
-# class Photo(models.Model):
-#     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='photos')
-#     image = models.ImageField(upload_to='photos/%Y/%m/%d/')
-#     image_hash = models.CharField(max_length=64, unique=True)
-#     source = models.CharField(max_length=20, choices=[('direct', 'Direct'), ('google', 'Google Drive')])
-    
-#     # 새로 정의한 Category 모델 연결
-#     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='photos')
-    
-#     # 기존 문자열 필드는 데이터 마이그레이션 후 삭제해도 무방합니다.
-#     is_confirmed = models.BooleanField(default=False)
-#     memo = models.TextField(blank=True, null=True)
-#     is_bookmarked = models.BooleanField(default=False)
-    
-#     is_trashed = models.BooleanField(default=False)
-#     trashed_at = models.DateTimeField(blank=True, null=True)
-    
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-
-#     def __str__(self):
-#         return f"[{self.user.username}] {self.id} ({self.category.name if self.category else '미분류'})"
-
-#     @property
-#     def expires_at(self):
-#         if self.trashed_at:
-#             return self.trashed_at + timedelta(days=30)
-#         return None
 
 class Photo(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='gallery_photos') # 중복 방지를 위해 이름 변경

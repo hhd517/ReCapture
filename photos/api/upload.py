@@ -84,7 +84,7 @@ def upload_photos(request):
         # 2️⃣ Photo 생성 ("분류 전" 카테고리에 자동 할당)
         # ImageField에는 media root 기준 상대 경로 저장
         from django.conf import settings
-        relative_path = meta["_final_path"].replace(settings.MEDIA_ROOT, "").lstrip("/").lstrip("\\")
+        relative_path = meta["_final_path"].replace(str(settings.MEDIA_ROOT), "").lstrip("/").lstrip("\\")
         
         photo = Photo.objects.create(
             user=user,
