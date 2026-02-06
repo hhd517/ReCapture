@@ -6,6 +6,8 @@ import pandas as pd
 import os
 import json
 
+#텍스트 모델 학습 파일(train_text.csv읽어서 koELECTRA텍스트 분류 모델 학습)->결과 저장(models/text_model_v1)(+label_map.json)
+
 class TextDataset(Dataset):
     """CSV 파일에서 텍스트를 읽어오는 데이터셋 (OCR 과정 없음!)"""
     

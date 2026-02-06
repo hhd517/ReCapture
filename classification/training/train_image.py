@@ -5,6 +5,8 @@ from torchvision import datasets, transforms
 import timm
 import os
 
+#이미지 모델 학습 파일(efficientnet_v1)-> 결과 저장:models/efficientnet_v1.pth
+
 def train_model():
     """EfficientNet 이미지 분류 모델 학습"""
     
