@@ -1,18 +1,38 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block content %}
-<h2>👤 마이페이지</h2>
-<div class="user-info" style="border: 1px solid #ddd; padding: 20px; border-radius: 10px;">
-    <p><strong>이름:</strong> {{ user.username }}</p>
-    <p><strong>이메일:</strong> {{ user.email }}</p>
-    <p><strong>가입일:</strong> {{ user.date_joined|date:"Y-m-d" }}</p>
-    
-    <hr>
-    
-    <a href="{% url 'accounts:logout' %}" 
-       onclick="return confirm('로그아웃 하시겠습니까?')"
-       style="color: red; text-decoration: none;">
-       🚪 로그아웃
-    </a>
+<link rel="stylesheet" href="{% static 'css/mypage.css' %}">
+
+<div class="mypage-container">
+    <div class="user-profile-header">
+        <div class="avatar-circle">
+            {{ user.username|slice:":1"|upper }}
+        </div>
+        <h2>👤 마이페이지</h2>
+    </div>
+
+    <div class="user-info-list">
+        <div class="info-row">
+            <span class="info-label">이름</span>
+            <span class="info-value">{{ user.username }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">이메일</span>
+            <span class="info-value">{{ user.email|default:"이메일 정보 없음" }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">가입일</span>
+            <span class="info-value">{{ user.date_joined|date:"Y-m-d" }}</span>
+        </div>
+    </div>
+
+    <div class="logout-wrapper">
+        <a href="{% url 'accounts:logout' %}" 
+           class="btn-logout"
+           onclick="return confirm('로그아웃 하시겠습니까?')">
+           🚪 로그아웃 하기
+        </a>
+    </div>
 </div>
 {% endblock %}

@@ -21,7 +21,7 @@ function toggleBookmark(photoId, csrfToken) {
                 icon.innerText = '☆ 북마크 추가';
                 icon.style.color = '#888';
             } else {
-                icon.innerText = '⭐ 북마크 취소';
+                icon.innerText = '★ 북마크 취소';
                 icon.style.color = 'orange';
             }
         } else {
