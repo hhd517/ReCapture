@@ -46,15 +46,15 @@ def upload_photos(request):
     # "분류 전" 카테고리 가져오기 (없으면 생성)
     unclassified_category, _ = Category.objects.get_or_create(
         user=user,
-        name='분류 전',
-        defaults={
-            'category_key': None,
-            'parent': None
-        }
+        name="분류 전",
+        defaults={"category_key": None, "parent": None},
     )
 
     created = []
     duplicates = []
+
+    from django.conf import settings
+    media_root_str = os.fspath(settings.MEDIA_ROOT)  # ✅ WindowsPath -> str
 
     for f in files:
         meta = save_uploaded_file(user, f)
@@ -75,22 +75,27 @@ def upload_photos(request):
                     except OSError:
                         pass
 
-            duplicates.append({
-                "filename": meta["filename"],
-                "existingPhotoId": existing.id,
-            })
+            duplicates.append(
+                {
+                    "filename": meta["filename"],
+                    "existingPhotoId": existing.id,
+                }
+            )
             continue
 
         # 2️⃣ Photo 생성 ("분류 전" 카테고리에 자동 할당)
         # ImageField에는 media root 기준 상대 경로 저장
-        from django.conf import settings
-        relative_path = meta["_final_path"].replace(settings.MEDIA_ROOT, "").lstrip("/").lstrip("\\")
-        
+        final_path = meta["_final_path"]  # 보통 str
+        # ✅ 안전한 상대경로 계산 (Path/str 혼용 문제 해결)
+        relative_path = os.path.relpath(final_path, media_root_str)
+        # ✅ DB에는 슬래시 통일 (윈도우 백슬래시 방지)
+        relative_path = relative_path.replace("\\", "/")
+
         photo = Photo.objects.create(
             user=user,
             filename=meta["filename"],
-            image=relative_path,
-            url=meta["url"],
+            image=relative_path,          # ✅ 상대 경로
+            url=meta["url"],              # 기존 로직 유지(원하면 이것도 relative로 통일 가능)
             file_size=meta["file_size"],
             file_hash=meta["file_hash"],
             phash=meta["phash"],
@@ -112,9 +117,6 @@ def upload_photos(request):
         created.append(PhotoSerializer(photo).data)
 
     return Response(
-        APIResponse.success({
-            "created": created,
-            "duplicates": duplicates,
-        }),
+        APIResponse.success({"created": created, "duplicates": duplicates}),
         status=status.HTTP_200_OK,
     )
