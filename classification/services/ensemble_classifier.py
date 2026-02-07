@@ -178,7 +178,22 @@ if __name__ == "__main__":
     # 폴더당 몇 장 테스트할지 (None이면 전부)
     PER_CLASS_LIMIT = 50
 
+    # =========================
+    # ✅ 누적 통계용 변수들
+    # =========================
+    # per-class: {cat: {"total": int, "correct": int}}
+    stats = {c: {"total": 0, "correct": 0} for c in CATS}
+
+    # confusion: confusion[true_cat][pred_cat] = count
+    confusion = {t: {p: 0 for p in CATS} for t in CATS}
+
+    # 전체
     total = 0
+    correct_total = 0
+
+    # 이미지 모델만 정확도(비교용)
+    img_correct_total = 0
+    img_stats = {c: {"total": 0, "correct": 0} for c in CATS}
 
     if not os.path.isdir(TEST_ROOT):
         print(f"\n⚠️ {TEST_ROOT} 폴더가 없습니다.")
@@ -203,16 +218,83 @@ if __name__ == "__main__":
         for fn in files:
             img_path = os.path.join(cat_dir, fn)
             result = clf.classify(img_path)
-            total += 1
 
+            pred_final = result["category"]  # finance/info/others/study_note
+            pred_img = result["image_result"]["category"]
+
+            total += 1
+            stats[true_cat]["total"] += 1
+            img_stats[true_cat]["total"] += 1
+
+            # ✅ final 정답 체크
+            is_correct = (pred_final == true_cat)
+            if is_correct:
+                correct_total += 1
+                stats[true_cat]["correct"] += 1
+
+            # ✅ image-only 정답 체크(비교용)
+            is_img_correct = (pred_img == true_cat)
+            if is_img_correct:
+                img_correct_total += 1
+                img_stats[true_cat]["correct"] += 1
+
+            # ✅ confusion 카운트
+            pred_key = pred_final if pred_final in CATS else "others"
+            confusion[true_cat][pred_key] += 1
+
+            # =========================
+            # 개별 출력(기존 + 정답표시)
+            # =========================
             print(f"\n📄 {true_cat}/{fn}")
-            print(f"🏆 최종: {result['final_category_kr']} ({result['confidence']*100:.1f}%)")
-            print(f"   - image: {result['image_result']['category']} ({result['image_result']['confidence']*100:.1f}%)")
+            print(
+                f"🏆 최종: {result['final_category_kr']} ({result['confidence']*100:.1f}%) "
+                f"{'✅' if is_correct else '❌'}"
+            )
+            print(
+                f"   - image: {result['image_result']['category']} "
+                f"({result['image_result']['confidence']*100:.1f}%)"
+                f"{' ✅' if is_img_correct else ''}"
+            )
             print(f"   - text : {result['text_result']['category']} ({result['text_result']['confidence']*100:.1f}%)")
             print(f"   - ocr  : {result['ocr_text_preview'].replace(chr(10), ' ')[:80]}...")
             for log in result["logs"]:
                 print(f"   {log}")
 
             print("-" * 70)
+
+    # =========================
+    # ✅ 요약 리포트 출력
+    # =========================
+    def pct(a, b):
+        return (a / b * 100.0) if b else 0.0
+
+    print("\n" + "=" * 70)
+    print("📊 SUMMARY REPORT")
+    print("=" * 70)
+
+    print(f"✅ Final Accuracy: {correct_total}/{total} = {pct(correct_total, total):.2f}%")
+    print(f"🖼️ Image-only Accuracy: {img_correct_total}/{total} = {pct(img_correct_total, total):.2f}%")
+
+    print("\n📌 Per-class Accuracy (Final):")
+    for c in CATS:
+        t = stats[c]["total"]
+        k = stats[c]["correct"]
+        print(f" - {c:10s}: {k:4d}/{t:4d} = {pct(k, t):6.2f}%")
+
+    print("\n📌 Per-class Accuracy (Image-only):")
+    for c in CATS:
+        t = img_stats[c]["total"]
+        k = img_stats[c]["correct"]
+        print(f" - {c:10s}: {k:4d}/{t:4d} = {pct(k, t):6.2f}%")
+
+    print("\n📌 Confusion Matrix (counts) [TRUE -> PRED]")
+    header = "TRUE\\PRED".ljust(12) + "".join([p.rjust(12) for p in CATS])
+    print(header)
+    print("-" * len(header))
+    for t in CATS:
+        row = t.ljust(12)
+        for p in CATS:
+            row += str(confusion[t][p]).rjust(12)
+        print(row)
 
     print(f"\n✅ Done. total tested = {total}")
