@@ -5,6 +5,9 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.response import Response
 from rest_framework import status
 
+import requests
+import traceback
+
 from photos.models import GoogleCredential, ImportJob
 from photos.serializers.photo import ImportGoogleRequestSerializer
 from photos.serializers.response import APIResponse
@@ -24,8 +27,7 @@ class CsrfExemptSessionAuthentication(SessionAuthentication):
 def import_from_google(request):
     """
     (변경) 구글 포토 Import 시작:
-    - 기존: 곧바로 전체 라이브러리 다운로드 task 실행
-    - 변경: Picker 세션 생성 후 pickerUri/sessionId 반환
+    - Picker 세션 생성 후 pickerUri/sessionId 반환
     """
     serializer = ImportGoogleRequestSerializer(data=request.data)
     if not serializer.is_valid():
@@ -48,18 +50,44 @@ def import_from_google(request):
         import_job = ImportJob.objects.create(
             user=user,
             job_id=job_id,
-            status="PICKING",  # 새 상태(권장): 사용자가 Picker에서 선택 중
+            status="PICKING",
             source="GOOGLE",
             folder_id=folder_id,
         )
 
         google_service = GooglePhotosService(google_credential=google_cred)
-        session = google_service.create_picker_session()
+
+        # ✅ 여기서 실패 원인을 detail로 내려주기
+        try:
+            session = google_service.create_picker_session()
+        except requests.HTTPError as e:
+            resp = getattr(e, "response", None)
+
+            if resp is not None:
+                # 서버 콘솔에 원인 남기기
+                print("[PickerSessionFail]", resp.status_code, (resp.text[:800] if resp.text else ""))
+
+                response_data = APIResponse.error(
+                    code="PICKER_SESSION_FAILED",
+                    message=f"Picker 세션 생성 실패 ({resp.status_code})"
+                )
+                # 필요하면 message에 일부를 같이 실어도 됨(너무 길면 잘라)
+                # response_data = APIResponse.error(
+                #     code="PICKER_SESSION_FAILED",
+                #     message=f"Picker 세션 생성 실패 ({resp.status_code}): {(resp.text[:300] if resp.text else '')}"
+                # )
+
+                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+            response_data = APIResponse.error(
+                code="PICKER_SESSION_FAILED",
+                message=f"Picker 세션 생성 실패: {str(e)}"
+            )
+            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
         session_id = session.get("sessionId")
         picker_uri = session.get("pickerUri")
 
-        # ImportJob 모델에 picker_session_id 필드가 없을 수도 있어서 안전 처리
         if hasattr(import_job, "picker_session_id"):
             import_job.picker_session_id = session_id
             import_job.save(update_fields=["picker_session_id"])
@@ -76,6 +104,9 @@ def import_from_google(request):
         return Response(response_data, status=status.HTTP_200_OK)
 
     except Exception as e:
+        print("[import_from_google] Unexpected error:", str(e))
+        traceback.print_exc()
+
         response_data = APIResponse.error(
             code="IMPORT_START_ERROR",
             message=f"Import 작업 시작 실패: {str(e)}",
@@ -87,9 +118,6 @@ def import_from_google(request):
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def get_picker_session_status(request, session_id):
-    """
-    (신규) Picker 세션 상태 조회 (프론트 폴링용)
-    """
     user = request.user
 
     try:
@@ -122,15 +150,6 @@ def get_picker_session_status(request, session_id):
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def confirm_google_picker_selection(request):
-    """
-    (신규) Picker에서 선택 완료 후 다운로드 task 시작
-    body 예시:
-      {
-        "jobId": "xxx",
-        "sessionId": "sessions/...." or "....",
-        "dedupe": true
-      }
-    """
     user = request.user
 
     job_id = request.data.get("jobId")
@@ -148,13 +167,11 @@ def confirm_google_picker_selection(request):
         return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
     try:
-        # 상태 업데이트
         job.status = "QUEUED"
         if hasattr(job, "picker_session_id"):
             job.picker_session_id = session_id
         job.save()
 
-        # Celery 백그라운드 작업 시작 (이제 session_id를 넘겨야 함)
         import_google_photos_task.delay(
             user_id=user.id,
             job_id=job_id,
@@ -178,12 +195,10 @@ def confirm_google_picker_selection(request):
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def get_import_job_status(request, job_id):
-    """Import 작업 진행 상황 조회"""
     user = request.user
 
     try:
         job = ImportJob.objects.get(job_id=job_id, user=user)
-
         progress = ImportService.calculate_progress(job)
 
         response_data = APIResponse.success(

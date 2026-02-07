@@ -16,12 +16,12 @@ class APIResponse:
         }
     
     @staticmethod
-    def error(code: str, message: str):
-        """실패 응답"""
-        return {
+    def error(code, message, extra=None):
+        payload = {
             "success": False,
-            "error": {
-                "code": code,
-                "message": message
-            }
+            "code": code,
+            "message": message,
         }
+        if extra is not None:
+            payload["extra"] = extra
+        return payload
