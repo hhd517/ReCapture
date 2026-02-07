@@ -1,109 +1,63 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% load static %} {% block content %}
-<h2>📸 나의 Re:Capture 갤러리</h2>
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/gallery.css' %}">
 
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-    <a href="{% url 'gallery:trash_list' %}" style="text-decoration: none; color: #666; font-size: 14px;">
-        🗑️ 휴지통 보기
-    </a>
-
-    <div style="display: flex; gap: 10px;">
-        <button onclick="document.getElementById('fileInput').click()"
-                style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
-            📤 사진 업로드
-        </button>
-        <input type="file" id="fileInput" multiple accept="image/*" style="display: none;" onchange="uploadPhotos(event)">
-
-        <button id="googlePhotosBtn" onclick="importGooglePhotos()"
-                style="padding: 10px 20px; background: #4285f4; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
-            📷 구글 포토 불러오기
-        </button>
-
-        {% if photos and current_category_name == '분류 전' %}
-        <button onclick="classifyPhotos()"
-                style="padding: 10px 20px; background: #ff6b6b; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
-            🔄 사진 분류하기
-        </button>
-        {% endif %}
-    </div>
+<div class="gallery-header">
+    <h2>📸 나의 Re:Capture 갤러리</h2>
+    <a href="{% url 'gallery:trash_list' %}" style="color: #999;">🗑️ 휴지통</a>
 </div>
 
-<div id="importProgress" style="display: none; padding: 15px; background: #e3f2fd; border-radius: 8px; margin-bottom: 20px;">
-    <div style="display: flex; align-items: center; gap: 10px;">
-        <div class="spinner" style="border: 3px solid #f3f3f3; border-top: 3px solid #4285f4; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite;"></div>
-        <span id="importStatus">구글 포토에서 사진을 가져오는 중...</span>
-    </div>
-    <div style="margin-top: 10px;">
-        <div style="background: #ddd; height: 8px; border-radius: 4px; overflow: hidden;">
-            <div id="progressBar" style="background: #4285f4; height: 100%; width: 0%; transition: width 0.3s;"></div>
-        </div>
-        <small id="progressText" style="color: #666; margin-top: 5px; display: block;">0 / 0</small>
-    </div>
-</div>
+<div class="action-buttons" style="margin-bottom: 25px; justify-content: flex-end;">
+    <button class="btn-action btn-upload" onclick="document.getElementById('fileInput').click()">
+        📤 사진 업로드
+    </button>
+    <input type="file" id="fileInput" multiple accept="image/*" style="display: none;" onchange="uploadPhotos(event)">
 
-<style>
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-</style>
+    <button class="btn-action btn-google" id="googlePhotosBtn" onclick="importGooglePhotos()">
+        📷 구글 포토 불러오기
+    </button>
 
-<div class="filter-bar" style="margin-bottom: 20px; padding: 15px; background: #fdfdfd; border: 1px solid #eee; border-radius: 12px;">
-    <a href="?" class="btn {% if not current_category and not is_bookmarked %}active{% endif %}">전체</a>
-
-    {% for cat in categories %}
-        <a href="?category_id={{ cat.id }}{% if is_bookmarked %}&bookmarked=true{% endif %}"
-            style="margin-left: 10px; {% if current_category == cat.id %}font-weight: bold; color: #007bff;{% endif %}">
-            {{ cat.name }}{% if cat.name == '분류 전' %} ({{ cat.photos.count }}){% endif %}
-        </a>
-    {% endfor %}
-
-    <span style="margin: 0 15px; color: #ccc;">|</span>
-
-    {% if is_bookmarked %}
-        <a href="?{% if current_category %}category_id={{ current_category }}{% endif %}" style="color: orange; font-weight: bold;">
-            ⭐ 북마크만 보기 (ON)
-        </a>
-    {% else %}
-        <a href="?bookmarked=true{% if current_category %}&category_id={{ current_category }}{% endif %}" style="color: #666;">
-            ☆ 북마크만 보기 (OFF)
-        </a>
+    {% if photos and current_category_name == '분류 전' %}
+    <button class="btn-action btn-classify" onclick="classifyPhotos()">
+        🔄 사진 분류하기
+    </button>
     {% endif %}
 </div>
 
-{% if current_category %}
-<div class="sub-filter-bar" ...>
-    <strong>📁 세부 폴더:</strong>
-    <a href="?category_id={{ current_category }}{% if is_bookmarked %}&bookmarked=true{% endif %}"
-       style="margin-left: 10px; text-decoration: none; {% if not current_sub_category %}font-weight: bold; color: black;{% else %}color: #666;{% endif %}">
-       전체
-    </a>
-
-    {% for sub in sub_categories %}
-        <a href="?category_id={{ current_category }}&sub_category_id={{ sub.id }}{% if is_bookmarked %}&bookmarked=true{% endif %}"
-           style="margin-left: 10px; text-decoration: none; {% if current_sub_category == sub.id %}font-weight: bold; color: #007bff;{% else %}color: #666;{% endif %}">
-           #{{ sub.name }}
+<div class="filter-bar">
+    <a href="?" class="filter-link {% if not current_category and not is_bookmarked %}active{% endif %}">전체</a>
+    {% for cat in categories %}
+        <a href="?category_id={{ cat.id }}{% if is_bookmarked %}&bookmarked=true{% endif %}"
+           class="filter-link {% if current_category == cat.id %}active{% endif %}">
+            {{ cat.name }}{% if cat.name == '분류 전' %} ({{ cat.photos.count }}){% endif %}
         </a>
     {% endfor %}
-    <button onclick="createSubCategory({{ current_category }}, '{{ csrf_token }}')"
-            style="margin-left: 20px; border: 1px dashed #007bff; background: white; color: #007bff; cursor: pointer; border-radius: 4px;">
-        + 폴더 추가
-    </button>
-</div>
-{% endif %}
+    
+    <span style="margin: 0 10px; color: #eee;">|</span>
 
-<div class="gallery-grid" style="display: flex; flex-wrap: wrap; gap: 15px;">
+    <a href="?bookmarked={% if is_bookmarked %}false{% else %}true{% endif %}{% if current_category %}&category_id={{ current_category }}{% endif %}" 
+       class="filter-link" style="color: {% if is_bookmarked %}#ff9f43{% else %}#666{% endif %}; border: 1px solid {% if is_bookmarked %}#ff9f43{% else %}#ddd{% endif %};">
+       {% if is_bookmarked %}★ 북마크 중{% else %}☆ 북마크만 보기{% endif %}
+    </a>
+</div>
+
+<div class="gallery-grid">
     {% for photo in photos %}
-        <div class="photo-card" style="border: 1px solid #ddd; padding: 10px; width: 170px;">
+        <div class="photo-card">
             <a href="{% url 'gallery:photo_detail' photo.id %}">
-                <img src="{{ photo.image.url }}" style="width: 150px; height: 150px; object-fit: cover;">
+                <img src="{{ photo.image.url }}" class="photo-img" alt="영수증 사진">
             </a>
-            <p><strong>{{ photo.category.name|default:"미분류" }}</strong></p>
-            {% if photo.is_bookmarked %}<span>⭐</span>{% endif %}
+            <div class="photo-info">
+                <span class="photo-category">{{ photo.category.name|default:"미분류" }}</span>
+                {% if photo.is_bookmarked %}<span class="bookmark-icon">⭐</span>{% endif %}
+            </div>
         </div>
     {% empty %}
-        <p>조건에 맞는 사진이 없습니다.</p>
+        <div style="grid-column: 1/-1; text-align: center; padding: 50px; color: #999;">
+            조건에 맞는 사진이 없습니다.
+        </div>
     {% endfor %}
 </div>
 

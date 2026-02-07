@@ -18,8 +18,6 @@ def create_default_categories(sender, instance, created, **kwargs):
         default_cats = [
             ('finance', '결제/금융'),
             ('study_note', '학습/노트'),
-            ('shopping', '쇼핑 정보'),
-            ('schedule', '일정/예약'),
             ('document', '문서/정보'),
             ('others', '기타정보(비정보)'),
         ]

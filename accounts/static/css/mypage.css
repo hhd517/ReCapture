@@ -1,0 +1,90 @@
+/* 마이페이지 전체 컨테이너 */
+.mypage-container {
+    max-width: 600px;
+    margin: 50px auto;
+    background: #fff;
+    padding: 40px;
+    border-radius: 24px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.06);
+    text-align: center;
+}
+
+.mypage-container h2 {
+    font-size: 28px;
+    margin-bottom: 30px;
+    color: #1a1a1a;
+    font-weight: 800;
+}
+
+/* 유저 아바타(가상) 및 이름 섹션 */
+.user-profile-header {
+    margin-bottom: 30px;
+}
+
+.avatar-circle {
+    width: 80px;
+    height: 80px;
+    background: #e7f1ff;
+    color: #007bff;
+    font-size: 32px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin: 0 auto 15px;
+}
+
+/* 유저 상세 정보 목록 */
+.user-info-list {
+    text-align: left;
+    background: #f8f9fa;
+    padding: 25px;
+    border-radius: 16px;
+    margin-bottom: 30px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    color: #888;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.info-value {
+    color: #333;
+    font-weight: 600;
+}
+
+/* 로그아웃 버튼 */
+.logout-wrapper {
+    margin-top: 20px;
+}
+
+.btn-logout {
+    display: inline-block;
+    padding: 12px 30px;
+    color: #ff4757;
+    background: #fff5f5;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.2s;
+    border: 1px solid #ffe0e0;
+}
+
+.btn-logout:hover {
+    background: #ff4757;
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 71, 87, 0.2);
+}
