@@ -40,15 +40,23 @@ classification/train_data/
 classification/test_data/
 classification/train_text.csv
 
-# 모델 파일 (용량 큼)
-classification/models/
-*.pth
-*.pt
-*.safetensors
-
 # IDE
 .idea/
 *.swp
 *.swo
 *~
 .DS_Store
+
+# =========================
+# 최소 제외 (필수)
+# =========================
+
+# 1) 학습/테스트 이미지 데이터
+classification/train_data/
+classification/test_data/
+
+# 2) 비밀키/환경변수 (절대 커밋 금지)
+classification/google_credentials.json
+.env
+.env.local
+.env.*.local
