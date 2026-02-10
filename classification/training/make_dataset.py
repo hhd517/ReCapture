@@ -16,9 +16,24 @@ from services.google_ocr_service import GoogleOCRService
 from services.ocr_cache import OCRCache
 
 
+# ✅ 9개 최종 카테고리(폴더명 = label)
+VALID_CATEGORIES = [
+    "study_note",
+    "receipt",
+    "booking",
+    "shopping",
+    "info",
+    "people",
+    "food",
+    "nature",
+    "others",
+]
+
+
 def create_dataset_csv():
-    data_dir = 'train_data'
-    output_file = 'train_text.csv'
+    data_dir = "train_data"
+    output_file = "train_text.csv"
+    cache_dir = "ocr_cache"
 
     # OCR 서비스 생성
     try:
@@ -27,8 +42,7 @@ def create_dataset_csv():
         print(f"\n❌ OCR 서비스 초기화 실패: {e}")
         return
 
-    cache = OCRCache(cache_dir="ocr_cache")
-
+    cache = OCRCache(cache_dir=cache_dir)
     results = []
 
     print("=" * 60)
@@ -40,9 +54,26 @@ def create_dataset_csv():
         print(f"❌ '{data_dir}' 폴더가 없습니다.")
         return
 
-    categories = sorted(os.listdir(data_dir))
+    # ✅ 카테고리 폴더만 추출 + 검증
+    categories = sorted([
+        d for d in os.listdir(data_dir)
+        if os.path.isdir(os.path.join(data_dir, d))
+    ])
 
-    exts = ('.jpg', '.jpeg', '.png')
+    unknown = [c for c in categories if c not in VALID_CATEGORIES]
+    missing = [c for c in VALID_CATEGORIES if c not in categories]
+
+    if unknown:
+        print(f"❌ train_data 안에 알 수 없는 폴더가 있어요: {unknown}")
+        print(f"✅ 허용 폴더(9개): {VALID_CATEGORIES}")
+        return
+
+    if missing:
+        # 폴더가 비어있을 수는 있지만, 실수 방지용으로 경고만 띄움
+        print(f"⚠️ train_data 안에 없는(누락된) 카테고리 폴더: {missing}")
+        print("   (비어있어도 괜찮으면 빈 폴더라도 만들어두는 걸 추천)")
+
+    exts = (".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif")
 
     total_files = 0
     for r, d, files in os.walk(data_dir):
@@ -56,12 +87,11 @@ def create_dataset_csv():
 
     for category in categories:
         folder_path = os.path.join(data_dir, category)
-        if not os.path.isdir(folder_path):
-            continue
 
         print(f"📂 [{category}] 폴더 처리 중...")
 
         files = [f for f in os.listdir(folder_path) if f.lower().endswith(exts)]
+        files = sorted(files)
 
         for filename in files:
             img_path = os.path.join(folder_path, filename)
@@ -69,7 +99,6 @@ def create_dataset_csv():
             try:
                 cached = cache.load(img_path)
 
-                # ⭐ HIT / MISS 로그 추가
                 if cached is not None:
                     print(f"   ⚡ HIT  {category}/{filename}")
                     response = cached
@@ -81,18 +110,17 @@ def create_dataset_csv():
                     cache_miss += 1
 
                 if isinstance(response, dict):
-                    text = response.get('full_text', '')
+                    text = response.get("full_text", "")
                 else:
                     text = str(response)
 
                 results.append({
-                    'filename': filename,
-                    'category': category,
-                    'text': text
+                    "filename": filename,
+                    "category": category,
+                    "text": text
                 })
 
                 processed_count += 1
-
                 if processed_count % 5 == 0:
                     print(
                         f"   👉 {processed_count}/{total_files} 완료 "
@@ -102,17 +130,16 @@ def create_dataset_csv():
             except Exception as e:
                 print(f"   ⚠️ 에러 발생 ({filename}): {e}")
 
-    # CSV 저장
     if results:
         df = pd.DataFrame(results)
-        df.to_csv(output_file, index=False, encoding='utf-8-sig')
+        df.to_csv(output_file, index=False, encoding="utf-8-sig")
 
         print("\n" + "=" * 60)
         print(f"🎉 변환 완료! '{output_file}' 생성")
         print(f"   총 데이터: {len(results)}")
         print(f"   ✅ 캐시 히트: {cache_hit}")
         print(f"   ✅ 캐시 미스: {cache_miss}")
-        print(f"   📁 캐시 위치: {os.path.abspath('ocr_cache')}")
+        print(f"   📁 캐시 위치: {os.path.abspath(cache_dir)}")
         print("=" * 60)
 
         print("미리보기:")

@@ -1,61 +1,101 @@
 # services/ensemble_classifier.py
 import os
 import sys
+import re
 
-# 최종 파이프라인(실제 분류기)
 # 프로젝트 루트 경로 설정 (services 폴더의 상위 폴더를 참조하기 위함)
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from services.google_ocr_service import GoogleOCRService
 from services.image_classifier import ImageClassifier
 from services.text_classifier import TextClassifier
-
-# ✅ 학습 때 쓰던 OCR 캐시
 from services.ocr_cache import OCRCache
 
 
 class EnsembleClassifier:
     """
-    🚀 스마트 통합 분류기 (4개 카테고리 최적화 버전)
-    카테고리: finance(금융), study_note(학습), info(정보), others(기타)
-    전략: Vision First (속도) -> Text Confirmation (정확도)
+    ✅ 개선된 앙상블 (최종 9카테고리)
+    - Vision First
+    - OCR trigger를 conf 뿐 아니라 "margin"도 사용
+    - 텍스트 강한 클래스는 더 신뢰(클래스별 threshold)
+    - receipt/shopping/booking/info/study_note는 텍스트 힌트로 보정
     """
+
+    CATS = [
+        "booking",
+        "food",
+        "info",
+        "nature",
+        "others",
+        "people",
+        "receipt",
+        "shopping",
+        "study_note",
+    ]
+
+    CATEGORY_KR = {
+        "booking": "예약/티켓",
+        "food": "음식",
+        "info": "정보",
+        "nature": "자연/풍경",
+        "others": "기타",
+        "people": "사람",
+        "receipt": "영수증",
+        "shopping": "쇼핑",
+        "study_note": "학습/노트",
+    }
+
+    # OCR이 강한 클래스(문서류)
+    OCR_STRONG = {"receipt", "shopping", "booking", "info", "study_note"}
+
+    # ✅ 클래스별 텍스트 override threshold
+    TEXT_OVERRIDE_TH = {
+        "receipt": 0.70,
+        "shopping": 0.72,
+        "booking": 0.72,
+        "info": 0.75,
+        "study_note": 0.75,
+        # people/nature/food는 OCR이 약해서 텍스트로 잘 안 뒤집게
+        "people": 0.90,
+        "nature": 0.90,
+        "food": 0.88,
+        "others": 0.90,
+    }
 
     def __init__(self):
         print("🚀 통합 분류 시스템 초기화 중...\n")
 
-        # ✅ OCR 서비스 초기화
+        # OCR 서비스
         try:
             self.ocr = GoogleOCRService()
         except Exception as e:
             print(f"⚠️ Google OCR 초기화 실패: {e}")
             print("   -> google_credentials.json 경로/환경변수를 확인하세요.")
-            self.ocr = None  # OCR을 못 쓰면 이미지 모델만이라도 돌리게
+            self.ocr = None
 
-        # ✅ OCR 캐시 초기화 (학습 때랑 동일)
-        # 실행 위치(CWD)가 classification이면 classification/ocr_cache 를 쓰게 됨
+        # OCR 캐시
         self.ocr_cache = OCRCache(cache_dir="ocr_cache")
 
-        # ✅ 분류기 로드
+        # 이미지 모델
         self.image_clf = ImageClassifier()
-        self.text_clf = TextClassifier()
 
-        # 🚦 OCR 검문이 필요한 카테고리 (Trigger)
-        self.ocr_triggers = ['finance', 'info', 'study_note']
+        # 텍스트 모델(없어도 돌아가게)
+        try:
+            self.text_clf = TextClassifier()
+        except Exception as e:
+            print(f"⚠️ TextClassifier 로드 실패 → 텍스트 보정 스킵: {e}")
+            self.text_clf = None
+
+        # OCR 트리거 (기존 + shopping 추가)
+        self.ocr_triggers = ["receipt", "info", "study_note", "booking", "shopping"]
 
         print("✅ 모든 모델 로드 완료!\n")
 
     def _get_ocr_text_cached(self, image_path: str, logs: list) -> str:
-        """
-        (1) 캐시 있으면 캐시 사용
-        (2) 캐시 없으면 OCR 호출 후 캐시에 저장
-        반환: full_text 문자열
-        """
         if self.ocr is None:
             logs.append("⚠️ OCR 서비스가 없어 OCR 스킵")
             return ""
 
-        # 1) 캐시 로드 (sha256 파일명 기반)
         cached = self.ocr_cache.load(image_path)
         if cached is not None:
             logs.append("⚡ OCR CACHE HIT (재호출 없음)")
@@ -64,107 +104,162 @@ class EnsembleClassifier:
             return str(cached)
 
         logs.append("🧠 OCR CACHE MISS (OCR 호출)")
-
-        # 2) OCR 호출
         ocr_result = self.ocr.extract_text(image_path)
 
-        # 3) 캐시에 저장 (학습 때처럼 dict를 저장)
         if isinstance(ocr_result, dict):
             self.ocr_cache.save(image_path, ocr_result)
             return ocr_result.get("full_text", "") or ""
-        else:
-            wrapped = {"full_text": str(ocr_result)}
-            self.ocr_cache.save(image_path, wrapped)
-            return wrapped["full_text"]
+
+        wrapped = {"full_text": str(ocr_result)}
+        self.ocr_cache.save(image_path, wrapped)
+        return wrapped["full_text"]
+
+    # ✅ 텍스트 힌트 점수(가벼운 규칙 기반)
+    def _text_hint_scores(self, text: str):
+        t = (text or "")
+        tl = t.lower()
+
+        scores = {"receipt": 0, "shopping": 0, "booking": 0, "study_note": 0, "info": 0}
+
+        # receipt 힌트
+        if re.search(r"\d{1,3}(?:,\d{3})*원|\d+원", t):
+            scores["receipt"] += 3
+        for kw in ["합계", "승인", "카드", "영수증", "부가세", "vat", "과세", "면세", "총액"]:
+            if kw.lower() in tl:
+                scores["receipt"] += 2
+
+        # shopping 힌트
+        for kw in ["주문", "배송", "상품", "옵션", "수량", "장바구니", "구매", "반품", "교환"]:
+            if kw.lower() in tl:
+                scores["shopping"] += 2
+
+        # booking 힌트
+        for kw in ["예약", "티켓", "예매", "좌석", "체크인", "출발", "도착", "탑승", "호텔", "숙소"]:
+            if kw.lower() in tl:
+                scores["booking"] += 2
+
+        # study_note 힌트
+        for kw in ["정리", "정의", "증명", "theorem", "lemma", "proof", "예제", "공식"]:
+            if kw.lower() in tl:
+                scores["study_note"] += 2
+
+        # info 힌트
+        if re.search(r"https?://|www\.", tl):
+            scores["info"] += 4
+        for kw in ["링크", "주소", "전화", "메일", "인증", "코드", "qr", "바코드"]:
+            if kw.lower() in tl:
+                scores["info"] += 2
+
+        return scores
 
     def classify(self, image_path: str):
-        """
-        Args:
-            image_path (str): 이미지 경로
-        Returns:
-            dict: 최종 분류 결과 (한국어 포함)
-        """
         logs = []
 
         # ---------------------------------------------------
-        # Step 1. 비전 모델 (속도 빠름 ⚡)
+        # Step 1. 비전 모델 (+ margin)
         # ---------------------------------------------------
-        img_cat, img_conf = self.image_clf.predict(image_path)
-        logs.append(f"👁️ 비전 예측: {img_cat} ({img_conf*100:.1f}%)")
+        if hasattr(self.image_clf, "predict_proba"):
+            img_cat, img_conf, img2_cat, img2_conf, margin = self.image_clf.predict_proba(image_path)
+            logs.append(
+                f"👁️ 비전 top1: {img_cat} ({img_conf*100:.1f}%), top2: {img2_cat} ({img2_conf*100:.1f}%), margin={margin:.3f}"
+            )
+        else:
+            img_cat, img_conf = self.image_clf.predict(image_path)
+            img2_cat, img2_conf, margin = None, 0.0, 1.0
+            logs.append(f"👁️ 비전 예측: {img_cat} ({img_conf*100:.1f}%)")
 
-        final_cat = img_cat
-        final_conf = img_conf
+        final_cat, final_conf = img_cat, img_conf
 
         ocr_text = ""
-        text_cat = None
-        text_conf = 0.0
+        text_cat, text_conf = None, 0.0
 
         # ---------------------------------------------------
-        # Step 2. OCR 발동 조건 체크 (Smart Trigger 🚦)
+        # Step 2. OCR 발동 조건 강화
+        # - trigger OR conf 낮음 OR margin 낮음(애매함)
         # ---------------------------------------------------
-        is_document = img_cat in self.ocr_triggers
-        is_uncertain = img_conf < 0.6
+        is_trigger = img_cat in self.ocr_triggers
+        is_uncertain = img_conf < 0.60
+        is_ambiguous = margin < 0.12  # ✅ 추가(중요)
 
-        if is_document or is_uncertain:
-            logs.append(f"🚨 OCR 검문 시작 (사유: {img_cat} 타입 or 확신 부족)")
+        if is_trigger or is_uncertain or is_ambiguous:
+            logs.append(f"🚨 OCR 시작 (trigger={is_trigger}, uncertain={is_uncertain}, ambiguous={is_ambiguous})")
 
-            try:
-                # ✅ (캐시) OCR 텍스트 얻기
+            # 텍스트 모델 없으면 OCR 텍스트만 기록하고 종료
+            if self.text_clf is None:
                 ocr_text = self._get_ocr_text_cached(image_path, logs)
+                logs.append("⚠️ 텍스트 모델 없음 → 이미지 결과 유지")
+            else:
+                try:
+                    ocr_text = self._get_ocr_text_cached(image_path, logs)
+                    cleaned = (ocr_text or "").strip()
 
-                if len((ocr_text or "").strip()) < 5:
-                    logs.append("❌ OCR 글자 거의 없음 → 이미지 결과 유지")
-                else:
-                    # -----------------------------------------------
-                    # Step 3. 텍스트 모델 (정확도 높음 🧠)
-                    # -----------------------------------------------
-                    text_cat, text_conf = self.text_clf.predict(ocr_text)
-                    logs.append(f"🧠 텍스트 예측: {text_cat} ({text_conf*100:.1f}%)")
-
-                    # -----------------------------------------------
-                    # Step 4. 최종 판결 (Conflict Resolution)
-                    # -----------------------------------------------
-                    if text_conf > 0.8:
-                        final_cat = text_cat
-                        final_conf = text_conf
-                        logs.append("✅ 텍스트 확신 높음 → 결과 덮어쓰기")
-
-                    elif img_cat != text_cat:
-                        if text_cat != 'others':
-                            final_cat = text_cat
-                            final_conf = text_conf
-                            logs.append("✅ 의견 불일치 → 텍스트 결과 우선")
-                        else:
-                            logs.append("✅ 텍스트가 others → 이미지 결과 유지")
-
+                    # 길이만 보지 말고 최소 텍스트 여부로만 컷
+                    if len(cleaned) < 3:
+                        logs.append("❌ OCR 글자 거의 없음 → 이미지 결과 유지")
                     else:
-                        final_conf = min((img_conf + text_conf) / 2 + 0.1, 0.99)
-                        logs.append("✅ 의견 일치 → 확신도 증가")
+                        # ---------------------------------------------------
+                        # Step 3. 텍스트 모델
+                        # ---------------------------------------------------
+                        text_cat, text_conf = self.text_clf.predict(cleaned)
+                        logs.append(f"🧠 텍스트 예측: {text_cat} ({text_conf*100:.1f}%)")
 
-            except Exception as e:
-                logs.append(f"⚠️ OCR/텍스트 파이프라인 실패: {e}")
+                        # ---------------------------------------------------
+                        # Step 3.5 텍스트 힌트 보정 (receipt/shopping/booking/info/study)
+                        # ---------------------------------------------------
+                        hints = self._text_hint_scores(cleaned)
+                        best_hint = max(hints, key=hints.get)
+                        best_hint_score = hints[best_hint]
+
+                        if best_hint_score >= 4 and best_hint in self.CATS:
+                            boosted = min(text_conf + 0.08, 0.98)
+                            logs.append(
+                                f"✨ 텍스트 힌트 강함: {best_hint} (score={best_hint_score}) → conf boost {text_conf:.2f}->{boosted:.2f}"
+                            )
+                            text_conf = boosted
+                            # 힌트가 강한데 text 라벨이 애매하면 힌트를 후보로 올림
+                            if (text_cat not in self.CATS) or (text_conf < 0.80):
+                                text_cat = best_hint
+
+                        # ---------------------------------------------------
+                        # Step 4. 최종 판결 (클래스별 threshold)
+                        # ---------------------------------------------------
+                        if text_cat in self.CATS:
+                            th = self.TEXT_OVERRIDE_TH.get(text_cat, 0.85)
+
+                            # (1) 텍스트가 충분히 강하면 덮어쓰기
+                            if text_conf >= th:
+                                final_cat, final_conf = text_cat, text_conf
+                                logs.append(f"✅ 텍스트 덮어쓰기 (th={th:.2f})")
+
+                            # (2) people/nature로 보이는데 문서류 텍스트가 꽤 강하면 뒤집기
+                            elif img_cat in {"people", "nature"} and text_cat in self.OCR_STRONG and text_conf >= 0.75:
+                                final_cat, final_conf = text_cat, text_conf
+                                logs.append("✅ people/nature인데 문서류 텍스트 강함 → 텍스트 우선")
+
+                            # (3) 의견 일치면 확신도 증가
+                            elif text_cat == img_cat:
+                                final_conf = min((img_conf + text_conf) / 2 + 0.08, 0.99)
+                                logs.append("✅ 의견 일치 → 확신도 증가")
+
+                            else:
+                                logs.append("ℹ️ 텍스트가 애매 → 이미지 유지")
+                        else:
+                            logs.append("ℹ️ 텍스트 라벨이 9카테고리 밖 → 이미지 유지")
+
+                except Exception as e:
+                    logs.append(f"⚠️ OCR/텍스트 파이프라인 실패: {e}")
 
         else:
             logs.append("💨 시각 정보 확실함 (OCR 생략)")
 
-        # ---------------------------------------------------
-        # Step 5. 한국어 변환 및 반환
-        # ---------------------------------------------------
-        category_kr_map = {
-            'finance': '결제/금융',
-            'study_note': '학습/노트',
-            'info': '정보',
-            'others': '기타(비정보)'
-        }
-
         return {
-            'category': final_cat,
-            'final_category_kr': category_kr_map.get(final_cat, '알수없음'),
-            'confidence': round(float(final_conf), 4),
-            'image_result': {'category': img_cat, 'confidence': float(img_conf)},
-            'text_result': {'category': text_cat, 'confidence': float(text_conf)},
-            'ocr_text_preview': (ocr_text or "")[:100],
-            'logs': logs
+            "category": final_cat,
+            "final_category_kr": self.CATEGORY_KR.get(final_cat, "알수없음"),
+            "confidence": round(float(final_conf), 4),
+            "image_result": {"category": img_cat, "confidence": float(img_conf)},
+            "text_result": {"category": text_cat, "confidence": float(text_conf)},
+            "ocr_text_preview": (ocr_text or "")[:100],
+            "logs": logs,
         }
 
 
@@ -172,26 +267,27 @@ if __name__ == "__main__":
     clf = EnsembleClassifier()
 
     TEST_ROOT = "test_data"
-    CATS = ["finance", "info", "others", "study_note"]
-    EXTS = (".jpg", ".jpeg", ".png", ".webp")
+    CATS = [
+        "booking",
+        "food",
+        "info",
+        "nature",
+        "others",
+        "people",
+        "receipt",
+        "shopping",
+        "study_note",
+    ]
+    EXTS = (".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif")
 
-    # 폴더당 몇 장 테스트할지 (None이면 전부)
     PER_CLASS_LIMIT = 50
 
-    # =========================
-    # ✅ 누적 통계용 변수들
-    # =========================
-    # per-class: {cat: {"total": int, "correct": int}}
     stats = {c: {"total": 0, "correct": 0} for c in CATS}
-
-    # confusion: confusion[true_cat][pred_cat] = count
     confusion = {t: {p: 0 for p in CATS} for t in CATS}
 
-    # 전체
     total = 0
     correct_total = 0
 
-    # 이미지 모델만 정확도(비교용)
     img_correct_total = 0
     img_stats = {c: {"total": 0, "correct": 0} for c in CATS}
 
@@ -219,32 +315,26 @@ if __name__ == "__main__":
             img_path = os.path.join(cat_dir, fn)
             result = clf.classify(img_path)
 
-            pred_final = result["category"]  # finance/info/others/study_note
+            pred_final = result["category"]
             pred_img = result["image_result"]["category"]
 
             total += 1
             stats[true_cat]["total"] += 1
             img_stats[true_cat]["total"] += 1
 
-            # ✅ final 정답 체크
             is_correct = (pred_final == true_cat)
             if is_correct:
                 correct_total += 1
                 stats[true_cat]["correct"] += 1
 
-            # ✅ image-only 정답 체크(비교용)
             is_img_correct = (pred_img == true_cat)
             if is_img_correct:
                 img_correct_total += 1
                 img_stats[true_cat]["correct"] += 1
 
-            # ✅ confusion 카운트
             pred_key = pred_final if pred_final in CATS else "others"
             confusion[true_cat][pred_key] += 1
 
-            # =========================
-            # 개별 출력(기존 + 정답표시)
-            # =========================
             print(f"\n📄 {true_cat}/{fn}")
             print(
                 f"🏆 최종: {result['final_category_kr']} ({result['confidence']*100:.1f}%) "
@@ -262,9 +352,6 @@ if __name__ == "__main__":
 
             print("-" * 70)
 
-    # =========================
-    # ✅ 요약 리포트 출력
-    # =========================
     def pct(a, b):
         return (a / b * 100.0) if b else 0.0
 
