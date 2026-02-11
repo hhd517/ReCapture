@@ -290,6 +290,9 @@ if __name__ == "__main__":
 
     img_correct_total = 0
     img_stats = {c: {"total": 0, "correct": 0} for c in CATS}
+    
+    text_correct_total = 0
+    text_stats = {c: {"total": 0, "correct": 0} for c in CATS}
 
     if not os.path.isdir(TEST_ROOT):
         print(f"\n⚠️ {TEST_ROOT} 폴더가 없습니다.")
@@ -317,10 +320,12 @@ if __name__ == "__main__":
 
             pred_final = result["category"]
             pred_img = result["image_result"]["category"]
+            pred_text = result["text_result"]["category"]
 
             total += 1
             stats[true_cat]["total"] += 1
             img_stats[true_cat]["total"] += 1
+            text_stats[true_cat]["total"] += 1
 
             is_correct = (pred_final == true_cat)
             if is_correct:
@@ -331,6 +336,11 @@ if __name__ == "__main__":
             if is_img_correct:
                 img_correct_total += 1
                 img_stats[true_cat]["correct"] += 1
+            
+            is_text_correct = (pred_text == true_cat)
+            if is_text_correct:
+                text_correct_total += 1
+                text_stats[true_cat]["correct"] += 1
 
             pred_key = pred_final if pred_final in CATS else "others"
             confusion[true_cat][pred_key] += 1
@@ -361,6 +371,7 @@ if __name__ == "__main__":
 
     print(f"✅ Final Accuracy: {correct_total}/{total} = {pct(correct_total, total):.2f}%")
     print(f"🖼️ Image-only Accuracy: {img_correct_total}/{total} = {pct(img_correct_total, total):.2f}%")
+    print(f"📝 Text-only Accuracy: {text_correct_total}/{total} = {pct(text_correct_total, total):.2f}%")
 
     print("\n📌 Per-class Accuracy (Final):")
     for c in CATS:
@@ -372,6 +383,12 @@ if __name__ == "__main__":
     for c in CATS:
         t = img_stats[c]["total"]
         k = img_stats[c]["correct"]
+        print(f" - {c:10s}: {k:4d}/{t:4d} = {pct(k, t):6.2f}%")
+    
+    print("\n📌 Per-class Accuracy (Text-only):")
+    for c in CATS:
+        t = text_stats[c]["total"]
+        k = text_stats[c]["correct"]
         print(f" - {c:10s}: {k:4d}/{t:4d} = {pct(k, t):6.2f}%")
 
     print("\n📌 Confusion Matrix (counts) [TRUE -> PRED]")
