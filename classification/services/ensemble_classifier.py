@@ -92,16 +92,18 @@ class EnsembleClassifier:
         print("✅ 모든 모델 로드 완료!\n")
 
     def _get_ocr_text_cached(self, image_path: str, logs: list) -> str:
-        if self.ocr is None:
-            logs.append("⚠️ OCR 서비스가 없어 OCR 스킵")
-            return ""
-
+        # 먼저 캐시 확인 (OCR 서비스 없어도 캐시 사용 가능)
         cached = self.ocr_cache.load(image_path)
         if cached is not None:
             logs.append("⚡ OCR CACHE HIT (재호출 없음)")
             if isinstance(cached, dict):
                 return cached.get("full_text", "") or ""
             return str(cached)
+
+        # 캐시가 없을 때만 OCR 서비스 필요
+        if self.ocr is None:
+            logs.append("⚠️ OCR 서비스가 없고 캐시도 없어 OCR 스킵")
+            return ""
 
         logs.append("🧠 OCR CACHE MISS (OCR 호출)")
         ocr_result = self.ocr.extract_text(image_path)
