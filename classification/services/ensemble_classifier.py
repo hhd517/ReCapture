@@ -14,51 +14,36 @@ from services.ocr_cache import OCRCache
 
 class EnsembleClassifier:
     """
-    ✅ 개선된 앙상블 (최종 9카테고리)
+    ✅ 개선된 앙상블 (최종 4카테고리)
     - Vision First
     - OCR trigger를 conf 뿐 아니라 "margin"도 사용
     - 텍스트 강한 클래스는 더 신뢰(클래스별 threshold)
-    - receipt/shopping/booking/info/study_note는 텍스트 힌트로 보정
+    - finance/info/study_note는 텍스트 힌트로 보정
     """
 
+    # ✅ 4카테고리
     CATS = [
-        "booking",
-        "food",
-        "info",
-        "nature",
-        "others",
-        "people",
-        "receipt",
-        "shopping",
+        "finance",
         "study_note",
+        "info",
+        "others",
     ]
 
     CATEGORY_KR = {
-        "booking": "예약/티켓",
-        "food": "음식",
-        "info": "정보",
-        "nature": "자연/풍경",
-        "others": "기타",
-        "people": "사람",
-        "receipt": "영수증",
-        "shopping": "쇼핑",
+        "finance": "결제/예약",
         "study_note": "학습/노트",
+        "info": "정보",
+        "others": "기타",
     }
 
     # OCR이 강한 클래스(문서류)
-    OCR_STRONG = {"receipt", "shopping", "booking", "info", "study_note"}
+    OCR_STRONG = {"finance", "info", "study_note"}
 
-    # ✅ 클래스별 텍스트 override threshold
+    # ✅ 클래스별 텍스트 override threshold (4카테고리)
     TEXT_OVERRIDE_TH = {
-        "receipt": 0.70,
-        "shopping": 0.72,
-        "booking": 0.72,
+        "finance": 0.72,
         "info": 0.75,
         "study_note": 0.75,
-        # people/nature/food는 OCR이 약해서 텍스트로 잘 안 뒤집게
-        "people": 0.90,
-        "nature": 0.90,
-        "food": 0.88,
         "others": 0.90,
     }
 
@@ -86,8 +71,8 @@ class EnsembleClassifier:
             print(f"⚠️ TextClassifier 로드 실패 → 텍스트 보정 스킵: {e}")
             self.text_clf = None
 
-        # OCR 트리거 (기존 + shopping 추가)
-        self.ocr_triggers = ["receipt", "info", "study_note", "booking", "shopping"]
+        # OCR 트리거 (문서성/텍스트성 강한 것들)
+        self.ocr_triggers = ["finance", "info", "study_note"]
 
         print("✅ 모든 모델 로드 완료!\n")
 
@@ -116,36 +101,40 @@ class EnsembleClassifier:
         self.ocr_cache.save(image_path, wrapped)
         return wrapped["full_text"]
 
-    # ✅ 텍스트 힌트 점수(가벼운 규칙 기반)
+    # ✅ 텍스트 힌트 점수(가벼운 규칙 기반) - 4카테고리
     def _text_hint_scores(self, text: str):
         t = (text or "")
         tl = t.lower()
 
-        scores = {"receipt": 0, "shopping": 0, "booking": 0, "study_note": 0, "info": 0}
+        scores = {"finance": 0, "study_note": 0, "info": 0}
 
-        # receipt 힌트
+        # -----------------------
+        # finance 힌트 (결제/예약/주문/영수증 다 포함)
+        # -----------------------
         if re.search(r"\d{1,3}(?:,\d{3})*원|\d+원", t):
-            scores["receipt"] += 3
-        for kw in ["합계", "승인", "카드", "영수증", "부가세", "vat", "과세", "면세", "총액"]:
-            if kw.lower() in tl:
-                scores["receipt"] += 2
+            scores["finance"] += 3
 
-        # shopping 힌트
-        for kw in ["주문", "배송", "상품", "옵션", "수량", "장바구니", "구매", "반품", "교환"]:
+        for kw in [
+            # 영수증/결제
+            "합계", "승인", "카드", "영수증", "부가세", "vat", "과세", "면세", "총액", "결제",
+            # 예약/티켓
+            "예약", "티켓", "예매", "좌석", "체크인", "출발", "도착", "탑승", "호텔", "숙소",
+            # 쇼핑/주문
+            "주문", "배송", "상품", "옵션", "수량", "장바구니", "구매", "반품", "교환", "결제완료",
+        ]:
             if kw.lower() in tl:
-                scores["shopping"] += 2
+                scores["finance"] += 2
 
-        # booking 힌트
-        for kw in ["예약", "티켓", "예매", "좌석", "체크인", "출발", "도착", "탑승", "호텔", "숙소"]:
-            if kw.lower() in tl:
-                scores["booking"] += 2
-
+        # -----------------------
         # study_note 힌트
-        for kw in ["정리", "정의", "증명", "theorem", "lemma", "proof", "예제", "공식"]:
+        # -----------------------
+        for kw in ["정리", "정의", "증명", "theorem", "lemma", "proof", "예제", "공식", "미분", "적분"]:
             if kw.lower() in tl:
                 scores["study_note"] += 2
 
+        # -----------------------
         # info 힌트
+        # -----------------------
         if re.search(r"https?://|www\.", tl):
             scores["info"] += 4
         for kw in ["링크", "주소", "전화", "메일", "인증", "코드", "qr", "바코드"]:
@@ -181,7 +170,7 @@ class EnsembleClassifier:
         # ---------------------------------------------------
         is_trigger = img_cat in self.ocr_triggers
         is_uncertain = img_conf < 0.60
-        is_ambiguous = margin < 0.12  # ✅ 추가(중요)
+        is_ambiguous = margin < 0.12
 
         if is_trigger or is_uncertain or is_ambiguous:
             logs.append(f"🚨 OCR 시작 (trigger={is_trigger}, uncertain={is_uncertain}, ambiguous={is_ambiguous})")
@@ -195,7 +184,6 @@ class EnsembleClassifier:
                     ocr_text = self._get_ocr_text_cached(image_path, logs)
                     cleaned = (ocr_text or "").strip()
 
-                    # 길이만 보지 말고 최소 텍스트 여부로만 컷
                     if len(cleaned) < 3:
                         logs.append("❌ OCR 글자 거의 없음 → 이미지 결과 유지")
                     else:
@@ -206,13 +194,13 @@ class EnsembleClassifier:
                         logs.append(f"🧠 텍스트 예측: {text_cat} ({text_conf*100:.1f}%)")
 
                         # ---------------------------------------------------
-                        # Step 3.5 텍스트 힌트 보정 (receipt/shopping/booking/info/study)
+                        # Step 3.5 텍스트 힌트 보정 (finance/info/study_note)
                         # ---------------------------------------------------
                         hints = self._text_hint_scores(cleaned)
                         best_hint = max(hints, key=hints.get)
                         best_hint_score = hints[best_hint]
 
-                        if best_hint_score >= 4 and best_hint in self.CATS:
+                        if best_hint_score >= 4:
                             boosted = min(text_conf + 0.08, 0.98)
                             logs.append(
                                 f"✨ 텍스트 힌트 강함: {best_hint} (score={best_hint_score}) → conf boost {text_conf:.2f}->{boosted:.2f}"
@@ -233,12 +221,7 @@ class EnsembleClassifier:
                                 final_cat, final_conf = text_cat, text_conf
                                 logs.append(f"✅ 텍스트 덮어쓰기 (th={th:.2f})")
 
-                            # (2) people/nature로 보이는데 문서류 텍스트가 꽤 강하면 뒤집기
-                            elif img_cat in {"people", "nature"} and text_cat in self.OCR_STRONG and text_conf >= 0.75:
-                                final_cat, final_conf = text_cat, text_conf
-                                logs.append("✅ people/nature인데 문서류 텍스트 강함 → 텍스트 우선")
-
-                            # (3) 의견 일치면 확신도 증가
+                            # (2) 의견 일치면 확신도 증가
                             elif text_cat == img_cat:
                                 final_conf = min((img_conf + text_conf) / 2 + 0.08, 0.99)
                                 logs.append("✅ 의견 일치 → 확신도 증가")
@@ -246,7 +229,7 @@ class EnsembleClassifier:
                             else:
                                 logs.append("ℹ️ 텍스트가 애매 → 이미지 유지")
                         else:
-                            logs.append("ℹ️ 텍스트 라벨이 9카테고리 밖 → 이미지 유지")
+                            logs.append("ℹ️ 텍스트 라벨이 4카테고리 밖 → 이미지 유지")
 
                 except Exception as e:
                     logs.append(f"⚠️ OCR/텍스트 파이프라인 실패: {e}")
@@ -268,18 +251,9 @@ class EnsembleClassifier:
 if __name__ == "__main__":
     clf = EnsembleClassifier()
 
+    # ✅ 4카테고리 테스트 구조
     TEST_ROOT = "test_data"
-    CATS = [
-        "booking",
-        "food",
-        "info",
-        "nature",
-        "others",
-        "people",
-        "receipt",
-        "shopping",
-        "study_note",
-    ]
+    CATS = ["finance", "study_note", "info", "others"]
     EXTS = (".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif")
 
     PER_CLASS_LIMIT = 50

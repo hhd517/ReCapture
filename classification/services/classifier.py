@@ -1,126 +1,127 @@
-# classification/services/classifier.py
-import re
+# services/image_classifier.py
 import os
-import sys
+from typing import List, Tuple
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import torch
+import timm
+from PIL import Image
+from torchvision import transforms
 
+# ✅ HEIC 지원
 try:
-    from .ocr_service import OCRService
-except ImportError:
-    from ocr_service import OCRService
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+except Exception:
+    pass
 
 
 class ImageClassifier:
-    """규칙 기반 분류 (✅ 9카테고리 버전)"""
+    """
+    ✅ EfficientNet 이미지 분류기 (4카테고리 버전)
+    - predict(): (top1_cat, top1_conf)
+    - predict_proba(): (top1_cat, top1_conf, top2_cat, top2_conf, margin)
+    """
 
-    CATS = [
-        "booking",
-        "food",
+    # ✅ 4카테고리
+    CATEGORIES: List[str] = [
+        "finance",
         "info",
-        "nature",
         "others",
-        "people",
-        "receipt",
-        "shopping",
         "study_note",
     ]
 
-    def __init__(self):
-        self.ocr_service = OCRService()
+    CATEGORY_KR = {
+        "finance": "결제/예약",
+        "study_note": "학습/노트",
+        "info": "정보",
+        "others": "기타",
+    }
 
-    def classify(self, image_path):
-        ocr_result = self.ocr_service.extract_text(image_path)
-        text = ocr_result.get("full_text", "") or ""
-        scores = self._calculate_scores(text)
+    def __init__(
+        self,
+        model_name: str = "efficientnet_b0",
+        model_path: str = "models/efficientnet_v1.pth",
+        device: str = "cpu",
+    ):
+        self.device = torch.device(device)
 
-        max_score = max(scores.values()) if scores else 0
-        category = max(scores, key=scores.get) if scores else "others"
-        total_score = sum(scores.values()) if scores else 0
+        print("🔧 이미지 분류 모델 로딩 중...")
 
-        confidence = (max_score / total_score) if total_score > 0 else 0.0
+        if not os.path.exists(model_path):
+            alt = "saved_models/efficientnet_v1.pth"
+            if os.path.exists(alt):
+                model_path = alt
+            else:
+                raise FileNotFoundError(
+                    f"❌ 모델 파일이 없습니다: {model_path}\n"
+                    f"cwd={os.getcwd()}"
+                )
 
-        # 너무 애매하면 others
-        if max_score < 5:
-            category = "others"
-            confidence = 0.30
+        print(f"   📂 모델 파일: {model_path}")
 
-        return {
-            "category": category,
-            "confidence": float(confidence),
-            "scores": scores,
-            "ocr_text": text,
-        }
+        self.model = timm.create_model(
+            model_name,
+            pretrained=False,
+            num_classes=len(self.CATEGORIES),
+        ).to(self.device)
+        self.model.eval()
 
-    def _calculate_scores(self, text: str):
-        scores = {c: 0 for c in self.CATS}
-        t = (text or "")
-        tl = t.lower()
+        ckpt = torch.load(model_path, map_location=self.device)
+        if isinstance(ckpt, dict) and "state_dict" in ckpt:
+            ckpt = ckpt["state_dict"]
+        if isinstance(ckpt, dict):
+            ckpt = {k.replace("module.", ""): v for k, v in ckpt.items()}
 
-        # =======================
-        # receipt (영수증)
-        # =======================
-        receipt_keywords = ["합계", "카드", "승인", "vat", "부가세", "결제", "영수증", "총액", "과세", "면세", "현금"]
-        for kw in receipt_keywords:
-            if kw.lower() in tl:
-                scores["receipt"] += 3
+        self.model.load_state_dict(ckpt, strict=True)
 
-        money_pattern = r"\d{1,3}(?:,\d{3})*원|\d+원"
-        scores["receipt"] += len(re.findall(money_pattern, t)) * 2
+        self.transform = transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            ]
+        )
 
-        if len(re.findall(r"\d{3,}", t)) > 5:
-            scores["receipt"] += 5
+        self.categories = self.CATEGORIES[:]
+        self.category_kr = self.CATEGORY_KR.copy()
 
-        # =======================
-        # study_note (학습)
-        # =======================
-        study_keywords = ["정의", "정리", "증명", "예제", "theorem", "lemma", "proof", "공식", "definition", "미분", "적분"]
-        for kw in study_keywords:
-            if kw.lower() in tl:
-                scores["study_note"] += 3
+        print(f"✅ 모델 준비 완료! (카테고리: {self.categories})\n")
 
-        math_symbols = ["∫", "∑", "√", "∂", "∆", "α", "β", "π", "≤", "≥", "≠"]
-        if sum(t.count(s) for s in math_symbols) > 3:
-            scores["study_note"] += 4
+    @torch.no_grad()
+    def predict(self, image_path: str) -> Tuple[str, float]:
+        img = Image.open(image_path).convert("RGB")
+        x = self.transform(img).unsqueeze(0).to(self.device)
 
-        # =======================
-        # booking (예약/티켓)
-        # =======================
-        booking_keywords = ["예약", "티켓", "예매", "좌석", "탑승", "항공", "출발", "도착", "체크인", "숙소", "호텔"]
-        for kw in booking_keywords:
-            if kw.lower() in tl:
-                scores["booking"] += 3
+        logits = self.model(x)
+        probs = torch.softmax(logits, dim=1).squeeze(0)
 
-        # =======================
-        # shopping (쇼핑/주문)
-        # =======================
-        shopping_keywords = ["주문", "배송", "구매", "장바구니", "결제완료", "상품", "옵션", "수량", "교환", "반품"]
-        for kw in shopping_keywords:
-            if kw.lower() in tl:
-                scores["shopping"] += 3
+        top_idx = int(torch.argmax(probs).item())
+        conf = float(probs[top_idx].item())
+        return self.categories[top_idx], conf
 
-        # =======================
-        # info (정보캡처)
-        # =======================
-        info_keywords = ["링크", "코드", "인증번호", "qr", "바코드", "주소", "전화", "메일"]
-        for kw in info_keywords:
-            if kw.lower() in tl:
-                scores["info"] += 3
+    @torch.no_grad()
+    def predict_proba(self, image_path: str):
+        """
+        Returns:
+            top1_cat, top1_conf, top2_cat, top2_conf, margin
+        """
+        img = Image.open(image_path).convert("RGB")
+        x = self.transform(img).unsqueeze(0).to(self.device)
 
-        if re.search(r"https?://|www\.", tl):
-            scores["info"] += 4
+        logits = self.model(x)
+        probs = torch.softmax(logits, dim=1).squeeze(0)
 
-        # =======================
-        # food (음식) - 매우 약한 힌트
-        # =======================
-        food_keywords = ["kcal", "칼로리", "단백질", "지방", "탄수화물", "원재료", "알레르기"]
-        for kw in food_keywords:
-            if kw.lower() in tl:
-                scores["food"] += 2
+        top2 = torch.topk(probs, k=2)
+        idx1 = int(top2.indices[0].item())
+        idx2 = int(top2.indices[1].item())
+        p1 = float(top2.values[0].item())
+        p2 = float(top2.values[1].item())
 
-        # =======================
-        # people / nature는 OCR만으로는 약해서 기본 0 유지
-        # (이미지 모델이 담당)
-        # =======================
+        c1 = self.categories[idx1]
+        c2 = self.categories[idx2]
+        margin = p1 - p2
+        return c1, p1, c2, p2, margin
 
-        return scores
+    def predict_with_korean(self, image_path: str):
+        cat, conf = self.predict(image_path)
+        return cat, self.category_kr.get(cat, cat), float(conf)

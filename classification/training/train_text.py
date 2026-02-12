@@ -7,18 +7,13 @@ import pandas as pd
 
 # 텍스트 모델 학습 파일(train_text.csv 읽어서 koELECTRA 텍스트 분류 모델 학습)
 # 결과 저장: models/text_model_v1 (+label_map.json)
+# ✅ 출력/흐름은 기존과 동일, 카테고리만 4개로 고정
 
-VALID_CATEGORIES = [
-    "study_note",
-    "receipt",
-    "booking",
-    "shopping",
-    "info",
-    "people",
-    "food",
-    "nature",
-    "others",
-]
+# -----------------------------------------------------------
+# 1. 카테고리 정의 ✅ 4개로 수정
+# -----------------------------------------------------------
+VALID_CATEGORIES = ["finance", "study_note", "info", "others"]
+LABEL_TO_IDX = {cat: idx for idx, cat in enumerate(VALID_CATEGORIES)}
 
 
 class TextDataset(Dataset):
@@ -31,28 +26,39 @@ class TextDataset(Dataset):
         print(f"📂 데이터셋 로딩 중: {csv_file}")
         self.df = pd.read_csv(csv_file)
 
-        # category 검증
-        cats = sorted(self.df["category"].unique().tolist())
-        unknown = [c for c in cats if c not in VALID_CATEGORIES]
+        # 기본 컬럼 체크
+        if "category" not in self.df.columns or "text" not in self.df.columns:
+            raise ValueError("❌ train_text.csv에 'category', 'text' 컬럼이 필요합니다.")
+
+        # category 정리
+        self.df["category"] = self.df["category"].astype(str)
+
+        # ✅ 허용 카테고리 검증 (4개만)
+        unknown = sorted(set(self.df["category"].unique()) - set(VALID_CATEGORIES))
         if unknown:
-            raise ValueError(f"train_text.csv에 알 수 없는 category가 있어요: {unknown}\n허용: {VALID_CATEGORIES}")
+            raise ValueError(
+                f"❌ train_text.csv에 허용되지 않은 category가 있어요: {unknown}\n"
+                f"✅ 허용 카테고리(4개): {VALID_CATEGORIES}"
+            )
 
-        # 라벨 인코딩: 알파벳순(=ImageFolder 기본 정렬과도 궁합 좋음)
-        self.categories = sorted(cats)
-        self.label_to_idx = {cat: idx for idx, cat in enumerate(self.categories)}
+        # 라벨 인코딩 정보
+        self.categories = VALID_CATEGORIES
+        self.label_to_idx = LABEL_TO_IDX
 
-        print(f"✅ 카테고리 맵핑: {self.label_to_idx}")
+        print(f"✅ 카테고리 맵핑(4개): {self.label_to_idx}")
         print(f"✅ 총 데이터 개수: {len(self.df)}개")
+        print(f"✅ 라벨 분포:\n{self.df['category'].value_counts()}")
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
-        text = str(row["text"])
+        text = str(row.get("text", ""))
         category = row["category"]
         label = self.label_to_idx[category]
 
+        # 너무 짧은 텍스트 처리(기존 스타일 유지)
         if len(text.strip()) < 2:
             text = "내용 없음"
 
@@ -138,6 +144,7 @@ def train_model():
     model.save_pretrained(save_dir)
     tokenizer.save_pretrained(save_dir)
 
+    # ✅ label_map.json 저장(4개 고정)
     with open(os.path.join(save_dir, "label_map.json"), "w", encoding="utf-8") as f:
         json.dump(full_dataset.label_to_idx, f, ensure_ascii=False, indent=4)
 

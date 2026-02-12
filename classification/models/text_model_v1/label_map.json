@@ -1,11 +1,6 @@
 {
-    "booking": 0,
-    "food": 1,
+    "finance": 0,
+    "study_note": 1,
     "info": 2,
-    "nature": 3,
-    "others": 4,
-    "people": 5,
-    "receipt": 6,
-    "shopping": 7,
-    "study_note": 8
+    "others": 3
 }

@@ -36,6 +36,9 @@ IMG_SIZE = 224
 VAL_RATIO = 0.2
 NUM_WORKERS = 0                 # Windows면 0이 안전
 
+# ✅ 최종 카테고리 4개(폴더명 = label)
+VALID_CATEGORIES = ["finance", "study_note", "info", "others"]
+
 
 # ======================
 # HEIC 포함 ImageFolder
@@ -85,6 +88,7 @@ class ImageFolderWithHEIC(ImageFolder):
                 print(f" - 제외: {p} ({msg})")
             if len(removed) > 10:
                 print(f" - ... 외 {len(removed)-10}개 더")
+
         self.samples = kept
         self.imgs = kept  # torchvision ImageFolder 호환
 
@@ -96,7 +100,7 @@ def main():
     if not os.path.isdir(DATA_DIR):
         raise FileNotFoundError(
             f"❌ DATA_DIR 폴더가 없습니다: {DATA_DIR}\n"
-            f"예) {DATA_DIR}/finance, {DATA_DIR}/info ... 형태로 카테고리 폴더가 있어야 합니다."
+            f"예) {DATA_DIR}/finance, {DATA_DIR}/study_note, {DATA_DIR}/info, {DATA_DIR}/others"
         )
 
     transform = transforms.Compose([
@@ -108,6 +112,28 @@ def main():
     # ✅ HEIC 포함 dataset + 깨진 파일 자동 제외
     full_dataset = ImageFolderWithHEIC(DATA_DIR, transform=transform, strict_filter=True)
     num_classes = len(full_dataset.classes)
+
+    # ✅ (추가) 폴더/카테고리 4개 검증 (출력 흐름은 그대로, 이상할 때만 에러/경고)
+    unknown = [c for c in full_dataset.classes if c not in VALID_CATEGORIES]
+    missing = [c for c in VALID_CATEGORIES if c not in full_dataset.classes]
+
+    if unknown:
+        raise ValueError(
+            f"❌ train_data 안에 알 수 없는 폴더가 있어요: {unknown}\n"
+            f"✅ 허용 폴더(4개): {VALID_CATEGORIES}"
+        )
+
+    if missing:
+        # 실수 방지용 경고(기존 make_dataset 방식과 동일한 톤)
+        print(f"⚠️ train_data 안에 없는(누락된) 카테고리 폴더: {missing}")
+        print("   (비어있어도 괜찮으면 빈 폴더라도 만들어두는 걸 추천)")
+
+    if sorted(full_dataset.classes) != sorted(VALID_CATEGORIES):
+        raise ValueError(
+            f"❌ 카테고리 폴더가 정확히 4개여야 합니다.\n"
+            f"   기대: {VALID_CATEGORIES}\n"
+            f"   현재: {full_dataset.classes}"
+        )
 
     if num_classes < 2:
         raise ValueError(
