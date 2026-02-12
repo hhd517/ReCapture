@@ -18,33 +18,26 @@ except Exception:
 
 class ImageClassifier:
     """
-    ✅ EfficientNet 이미지 분류기 (최종 9카테고리)
+    ✅ EfficientNet 이미지 분류기 (최종 4카테고리)
     - predict(): (top1_cat, top1_conf)
     - predict_proba(): (top1_cat, top1_conf, top2_cat, top2_conf, margin)
     """
 
+    # ✅ 4카테고리(폴더명/라벨명과 동일)
+    # ⚠️ 순서는 "학습 때 ImageFolder가 만든 classes 순서"와 같아야 함.
+    #    (보통 알파벳순: finance, info, others, study_note)
     CATEGORIES: List[str] = [
-        "booking",
-        "food",
+        "finance",
         "info",
-        "nature",
         "others",
-        "people",
-        "receipt",
-        "shopping",
         "study_note",
     ]
 
     CATEGORY_KR = {
-        "booking": "예약/티켓",
-        "food": "음식",
-        "info": "기타 정보",
-        "nature": "자연/풍경",
-        "others": "기타",
-        "people": "사람",
-        "receipt": "영수증",
-        "shopping": "쇼핑",
+        "finance": "결제/예약",
         "study_note": "학습/노트",
+        "info": "정보",
+        "others": "기타",
     }
 
     def __init__(
@@ -55,6 +48,7 @@ class ImageClassifier:
     ):
         self.device = torch.device(device)
 
+        # ✅ (출력 형태 유지)
         print("🔧 이미지 분류 모델 로딩 중...")
 
         if not os.path.exists(model_path):
