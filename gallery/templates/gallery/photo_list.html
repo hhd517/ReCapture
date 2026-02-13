@@ -68,6 +68,31 @@
     </a>
 </div>
 
+{% if current_category %}
+<div class="sub-filter-bar" style="background: #ffffff; padding: 15px 25px; border-radius: 15px; border: 1px solid #eee; margin-bottom: 20px; display: flex; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+    <strong style="margin-right: 15px; color: #555;">📁 세부 폴더:</strong>
+    
+    <a href="?category_id={{ current_category }}{% if is_bookmarked %}&bookmarked=true{% endif %}"
+       class="filter-link {% if not current_sub_category %}active{% endif %}" 
+       style="margin-right: 12px; padding: 6px 14px; border-radius: 20px; font-size: 14px; text-decoration: none; color: #666;">
+       전체
+    </a>
+
+    {% for sub in sub_categories %}
+        <a href="?category_id={{ current_category }}&sub_category_id={{ sub.id }}{% if is_bookmarked %}&bookmarked=true{% endif %}"
+           class="filter-link {% if current_sub_category == sub.id %}active{% endif %}"
+           style="margin-right: 12px; padding: 6px 14px; border-radius: 20px; font-size: 14px; text-decoration: none; color: #666;">
+           #{{ sub.name }}
+        </a>
+    {% endfor %}
+
+    <button onclick="createSubCategory({{ current_category }}, '{{ csrf_token }}')"
+            style="margin-left: 15px; border: 1px dashed #007bff; background: white; color: #007bff; cursor: pointer; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 600;">
+        + 폴더 추가
+    </button>
+</div>
+{% endif %}
+
 <div class="gallery-grid">
     {% for photo in photos %}
         <div class="photo-card">
@@ -78,7 +103,8 @@
                 <span class="photo-category" style="font-size: 13px; font-weight: 600; color: #007bff;">
                     {{ photo.category.name|default:"미분류" }}
                 </span>
-                {% if photo.is_bookmarked %}<span style="color: #ffcc00;">⭐</span>{% endif %}
+                {% if photo.is_bookmarked %}<i class="fa-solid fa-bookmark"></i> {% else %}
+                <i class="fa-regular fa-bookmark"></i> {% endif %}
             </div>
         </div>
     {% empty %}
@@ -132,7 +158,7 @@ async function importGooglePhotos() {
             return;
         }
 
-        showProgress('📷 Picker 여는 중...');
+        showProgress('Picker 여는 중...');
 
         const importRes = await fetch(`${API_BASE}/import/google`, {
             method: 'POST',
