@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/gallery.css' %}">
+
+<div class="gallery-header">
+    <h2>📸 나의 Re:Capture 갤러리</h2>
+    <a href="{% url 'gallery:trash_list' %}" style="color: #999;">🗑️ 휴지통</a>
+</div>
+
+<div class="action-buttons">
+    <button class="btn-action btn-upload" onclick="document.getElementById('fileInput').click()">
+        📤 사진 업로드
+    </button>
+    <input type="file" id="fileInput" multiple accept="image/*" style="display: none;" onchange="uploadPhotos(event)">
+
+    <button class="btn-action btn-google" id="googlePhotosBtn" onclick="importGooglePhotos()">
+        📷 구글 포토 불러오기
+    </button>
+
+    {% if photos and current_category_name == '분류 전' %}
+    <button class="btn-action btn-classify" onclick="classifyPhotos()">
+        🔄 사진 분류하기
+    </button>
+    {% endif %}
+</div>
+
+<div id="importProgress" style="display: none; padding: 15px; background: #e3f2fd; border-radius: 8px; margin-bottom: 20px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="spinner" style="border: 3px solid #f3f3f3; border-top: 3px solid #4285f4; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite;"></div>
+        <span id="importStatus">구글 포토에서 사진을 가져오는 중...</span>
+    </div>
+    <div style="margin-top: 10px;">
+        <div style="background: #ddd; height: 8px; border-radius: 4px; overflow: hidden;">
+            <div id="progressBar" style="background: #4285f4; height: 100%; width: 0%; transition: width 0.3s;"></div>
+        </div>
+        <small id="progressText" style="color: #666; margin-top: 5px; display: block;">0 / 0</small>
+    </div>
+</div>
+
+<style>
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+
+<div class="filter-bar">
+    <a href="?" class="filter-link {% if not current_category and not is_bookmarked %}active{% endif %}">전체</a>
+
+    {% for cat in categories %}
+        <a href="?category_id={{ cat.id }}{% if is_bookmarked %}&bookmarked=true{% endif %}"
+           class="filter-link {% if current_category == cat.id %}active{% endif %}">
+            {{ cat.name }}{% if cat.name == '분류 전' %} ({{ cat.photos.count }}){% endif %}
+        </a>
+    {% endfor %}
+
+    <span style="margin: 0 10px; color: #eee;">|</span>
+
+    <a href="?bookmarked={% if is_bookmarked %}false{% else %}true{% endif %}{% if current_category %}&category_id={{ current_category }}{% endif %}" 
+       class="filter-link" style="color: {% if is_bookmarked %}#ff9f43{% else %}#666{% endif %}; border: 1px solid {% if is_bookmarked %}#ff9f43{% else %}#ddd{% endif %};">
+       {% if is_bookmarked %}★ 북마크 중{% else %}☆ 북마크만 보기{% endif %}
+    </a>
+</div>
+
+{% if current_category %}
+<div class="sub-filter-bar">
+    <strong>📁 세부 폴더:</strong>
+    <a href="?category_id={{ current_category }}{% if is_bookmarked %}&bookmarked=true{% endif %}"
+       class="filter-link {% if not current_sub_category %}active{% endif %}">
+       전체
+    </a>
+
+    {% for sub in sub_categories %}
+        <a href="?category_id={{ current_category }}&sub_category_id={{ sub.id }}{% if is_bookmarked %}&bookmarked=true{% endif %}"
+           class="filter-link {% if current_sub_category == sub.id %}active{% endif %}">
+           #{{ sub.name }}
+        </a>
+    {% endfor %}
+    <button onclick="createSubCategory({{ current_category }}, '{{ csrf_token }}')"
+            style="margin-left: 20px; border: 1px dashed #007bff; background: white; color: #007bff; cursor: pointer; border-radius: 4px; padding: 6px 12px;">
+        + 폴더 추가
+    </button>
+</div>
+{% endif %}
+
+<div class="gallery-grid">
+    {% for photo in photos %}
+        <div class="photo-card">
+            <a href="{% url 'gallery:photo_detail' photo.id %}">
+                <img src="{{ photo.image.url }}" class="photo-img" alt="영수증 사진">
+            </a>
+            <div class="photo-info">
+                <span class="photo-category">{{ photo.category.name|default:"미분류" }}</span>
+                {% if photo.is_bookmarked %}<span class="bookmark-icon">⭐</span>{% endif %}
+            </div>
+        </div>
+    {% empty %}
+        <div style="grid-column: 1/-1; text-align: center; padding: 50px; color: #999;">
+            조건에 맞는 사진이 없습니다.
+        </div>
+    {% endfor %}
+</div>
+
+<script>
+const API_BASE = '/api/v1/photos';
+let importJobId = null;
+let importSessionId = null;
+
+let sessionPollingInterval = null;
+let importPollingInterval = null;
+
+function showProgress(text) {
+    document.getElementById('importProgress').style.display = 'block';
+    document.getElementById('importStatus').textContent = text;
+}
+
+function stopIntervals() {
+    if (sessionPollingInterval) clearInterval(sessionPollingInterval);
+    if (importPollingInterval) clearInterval(importPollingInterval);
+    sessionPollingInterval = null;
+    importPollingInterval = null;
+}
+
+async function importGooglePhotos() {
+    stopIntervals();
+
+    try {
+        const statusRes = await fetch(`${API_BASE}/google/status`, {
+            headers: { 'Authorization': `Token ${localStorage.getItem('auth_token')}` }
+        });
+        const statusData = await statusRes.json();
+
+        if (!statusData.data || !statusData.data.connected) {
+            if (confirm('구글 포토 연동이 필요합니다. 연동하시겠습니까?')) {
+                const authRes = await fetch(`${API_BASE}/google/authorize`, {
+                    headers: { 'Authorization': `Token ${localStorage.getItem('auth_token')}` }
+                });
+                const authData = await authRes.json();
+
+                if (authData.data && authData.data.authUrl) {
+                    window.location.href = authData.data.authUrl;
+                    return;
+                }
+            }
+            return;
+        }
+
+        showProgress('📷 Picker 여는 중...');
+
+        const importRes = await fetch(`${API_BASE}/import/google`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Token ${localStorage.getItem('auth_token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ dedupe: true })
+        });
+
+        const importData = await importRes.json();
+
+        if (!importData.data || !importData.data.jobId || !importData.data.pickerUri || !importData.data.sessionId) {
+            throw new Error(importData.message || 'Picker 세션 생성 실패');
+        }
+
+        importJobId = importData.data.jobId;
+        importSessionId = importData.data.sessionId;
+
+        const pickerUri = importData.data.pickerUri;
+
+        window.open(pickerUri, '_blank');
+
+        showProgress('🖱️ 구글 포토에서 사진을 선택하고 창을 닫아. 선택 완료 확인 중...');
+        startSessionPolling();
+
+    } catch (error) {
+        console.error('Import error:', error);
+        alert('구글 포토 불러오기 실패: ' + error.message);
+        stopIntervals();
+    }
+}
+
+function startSessionPolling() {
+    if (sessionPollingInterval) clearInterval(sessionPollingInterval);
+
+    sessionPollingInterval = setInterval(async () => {
+        try {
+            const res = await fetch(`${API_BASE}/import/google/session/${importSessionId}`, {
+                headers: { 'Authorization': `Token ${localStorage.getItem('auth_token')}` }
+            });
+
+            const data = await res.json();
+            if (!data.data || !data.data.session) return;
+
+            const session = data.data.session;
+
+            // 선택 완료되면 backend confirm 호출
+            if (session.mediaItemsSet === true) {
+                clearInterval(sessionPollingInterval);
+                sessionPollingInterval = null;
+
+                showProgress('✅ 선택 완료! 다운로드 시작하는 중...');
+                await confirmSelectionAndStartImport();
+            }
+
+        } catch (error) {
+            console.error('Session polling error:', error);
+        }
+    }, 2000);
+}
+
+async function confirmSelectionAndStartImport() {
+    const res = await fetch(`${API_BASE}/import/google/confirm`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Token ${localStorage.getItem('auth_token')}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            jobId: importJobId,
+            sessionId: importSessionId,
+            dedupe: true
+        })
+    });
+
+    const data = await res.json();
+    if (!data.success) {
+        throw new Error(data.message || 'Import confirm 실패');
+    }
+
+    showProgress('⬇️ 선택한 사진 다운로드 중...');
+    startImportPolling();
+}
+
+function startImportPolling() {
+    if (importPollingInterval) clearInterval(importPollingInterval);
+
+    importPollingInterval = setInterval(async () => {
+        try {
+            const res = await fetch(`${API_BASE}/import/jobs/${importJobId}`, {
+                headers: { 'Authorization': `Token ${localStorage.getItem('auth_token')}` }
+            });
+
+            const data = await res.json();
+            if (!data.data) return;
+
+            const { status, progress } = data.data;
+            const { total, done, skipped, failed } = progress;
+
+            const percentage = total > 0 ? Math.round((done + skipped + failed) / total * 100) : 0;
+            document.getElementById('progressBar').style.width = percentage + '%';
+            document.getElementById('progressText').textContent = `${done} / ${total} (건너뜀: ${skipped}, 실패: ${failed})`;
+
+            if (status === 'DONE') {
+                document.getElementById('importStatus').textContent = '✅ 사진 가져오기 완료!';
+                clearInterval(importPollingInterval);
+                importPollingInterval = null;
+
+                setTimeout(() => location.reload(), 1500);
+
+            } else if (status === 'FAILED') {
+                document.getElementById('importStatus').textContent = '❌ 사진 가져오기 실패';
+                clearInterval(importPollingInterval);
+                importPollingInterval = null;
+            } else if (status === 'PICKING') {
+                document.getElementById('importStatus').textContent = '🖱️ 사진 선택 중...';
+            } else {
+                document.getElementById('importStatus').textContent = '⬇️ 다운로드 진행 중...';
+            }
+
+        } catch (error) {
+            console.error('Import polling error:', error);
+        }
+    }, 2000);
+}
+
+async function uploadPhotos(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const formData = new FormData();
+    for (let file of files) {
+        formData.append('files', file);
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/upload`, {
+            method: 'POST',
+            headers: { 'Authorization': `Token ${localStorage.getItem('auth_token')}` },
+            body: formData
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            alert(`${data.data.created.length}개 사진 업로드 완료!`);
+            location.reload();
+        } else {
+            alert('업로드 실패: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        alert('업로드 실패: ' + error.message);
+    }
+}
+
+function classifyPhotos() {
+    alert('분류 기능은 곧 구현 예정입니다!');
+}
+</script>
+
+<script src="{% static 'js/photo_list.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,166 @@
+/* 기본 리셋 및 폰트 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+}
+
+body {
+    background-color: #f8f9fa;
+    color: #333;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* 헤더 디자인 */
+header {
+    background: #ffffff;
+    padding: 0 40px;
+    height: 70px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+header h1 a {
+    font-size: 24px;
+    font-weight: 800;
+    color: #007bff;
+    letter-spacing: -0.5px;
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.user-name {
+    font-weight: 500;
+    color: #555;
+}
+
+.btn-mypage {
+    padding: 8px 16px;
+    background: #f1f3f5;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.btn-mypage:hover {
+    background: #e9ecef;
+}
+
+.btn-login {
+    color: #007bff;
+    font-weight: 600;
+}
+
+/* 알림 드롭다운 디자인 */
+.notification-dropdown {
+    position: relative;
+    margin-left: 20px;
+}
+
+.noti-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+#noti-count {
+    background: #ff4757;
+    color: white;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 50px;
+    background-color: #ffffff;
+    min-width: 280px;
+    max-width: 320px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    border: 1px solid #eee;
+    overflow: hidden;
+}
+
+.notification-dropdown:hover .dropdown-content {
+    display: block;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.noti-item {
+    padding: 15px;
+    border-bottom: 1px solid #f1f1f1;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.noti-item:last-child { border-bottom: none; }
+.noti-item:hover { background: #f8f9fa; }
+.noti-item.unread { background: #fff9e6; }
+
+.noti-type {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: bold;
+    color: #007bff;
+    margin-bottom: 4px;
+}
+
+/* 애니메이션 */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 메인 컨텐츠 영역 */
+main {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+/* 태블릿 및 모바일 공통 (768px 이하) */
+@media (max-width: 768px) {
+    header {
+        padding: 0 20px;
+        height: auto;
+        flex-direction: column;
+        padding-bottom: 15px;
+    }
+
+    header h1 {
+        margin: 15px 0;
+    }
+
+    nav {
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .user-name {
+        display: none; /* 모바일에서는 이름 생략 가능 */
+    }
+}

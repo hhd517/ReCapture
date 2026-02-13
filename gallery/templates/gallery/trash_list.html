@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/trash_list.css' %}">
+
+<div class="trash-header">
+    <h2>🗑️ 휴지통</h2>
+    <p class="trash-info">휴지통에 있는 사진은 30일 뒤에 영구 삭제됩니다.</p>
+    <a href="{% url 'gallery:photo_list' %}" class="back-link">← 갤러리로 돌아가기</a>
+</div>
+
+<div class="trash-grid">
+    {% for photo in photos %}
+        <div class="trash-card">
+            <img src="{{ photo.image.url }}" class="trash-img" alt="삭제 대기 중인 사진">
+            <div class="trash-btns">
+                <button class="btn-trash-action btn-restore" onclick="restorePhoto({{ photo.id }}, '{{ csrf_token }}')">
+                    복구
+                </button>
+                <button class="btn-trash-action btn-delete-perm" onclick="permanentDelete({{ photo.id }}, '{{ csrf_token }}')">
+                    영구 삭제
+                </button>
+            </div>
+        </div>
+    {% empty %}
+        <div style="grid-column: 1/-1; text-align: center; padding: 60px; color: #bbb;">
+            <p>휴지통이 비어 있습니다.</p>
+        </div>
+    {% endfor %}
+</div>
+
+<script src="{% static 'js/trash_list.js' %}"></script>
+{% endblock %}

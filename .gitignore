@@ -1,18 +1,38 @@
 # 파이썬 캐시 
 __pycache__/
 *.py[cod]
+*.pyc
 
 # 가상환경
 .conda/
 env/
 venv/
+
 # 데이터베이스
 db.sqlite3
+
 # 미디어 및 정적 파일 폴더
 media/
-static/
+storage/
+
 # VS Code 설정
 .vscode/
-# 보안 및 환경 설정 파일 (추가)
+
+# 보안 및 환경 설정 파일
 .env
-.env.example
+credentials.json
+token.json
+
+# Celery
+celerybeat-schedule
+
+# 로그
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# cookie
+cookies.txt
+cookie.txt
