@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from .views import bookmark_views
+from .views import base_views
 
 app_name = 'gallery'
 
@@ -31,4 +32,6 @@ urlpatterns = [
 
     # 5. 세부 카테고리 만들기
     path('categories/add/', views.add_category, name='add_category'),
+
+    path('settings/', base_views.settings_view, name='settings'),
 ]

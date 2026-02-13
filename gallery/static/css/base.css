@@ -78,7 +78,7 @@ nav {
     color: #555;
 }
 
-.btn-mypage, .noti-btn {
+.btn-mypage {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -90,6 +90,11 @@ nav {
     border: none;
 }
 
+.noti-btn {
+    border: none;
+    color:#555;
+    background: #ffffff;
+}
 /* .btn-mypage {
     padding: 7px 16px;
     background: #f1f3f5;
