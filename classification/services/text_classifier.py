@@ -3,7 +3,8 @@ import os
 import json
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
-
+from pathlib import Path
+from django.conf import settings
 
 class TextClassifier:
     """
@@ -33,7 +34,7 @@ class TextClassifier:
         # ✅ (출력 형태 유지)
         print("🔧 텍스트 분류 모델 로딩 중...")
 
-        self.model_path = "models/text_model_v1"
+        self.model_path = self.model_path = str(Path(settings.BASE_DIR) / "classification" / "models" / "text_model_v1")
         if not os.path.exists(self.model_path):
             raise FileNotFoundError(
                 f"❌ 모델 폴더가 없습니다: {self.model_path}\n"

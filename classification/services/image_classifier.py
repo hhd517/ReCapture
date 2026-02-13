@@ -1,5 +1,7 @@
 # services/image_classifier.py
 import os
+from pathlib import Path
+from django.conf import settings
 from typing import List, Tuple
 
 import torch
@@ -43,7 +45,7 @@ class ImageClassifier:
     def __init__(
         self,
         model_name: str = "efficientnet_b0",
-        model_path: str = "models/efficientnet_v1.pth",
+        model_path: str = None,
         device: str = "cpu",
     ):
         self.device = torch.device(device)
@@ -51,8 +53,13 @@ class ImageClassifier:
         # ✅ (출력 형태 유지)
         print("🔧 이미지 분류 모델 로딩 중...")
 
+
+        # ✅ model_path가 None이면 프로젝트 기준 절대경로로 기본값 설정
+        if model_path is None:
+            model_path = str(Path(settings.BASE_DIR) / "classification" / "models" / "efficientnet_v1.pth")
+
         if not os.path.exists(model_path):
-            alt = "saved_models/efficientnet_v1.pth"
+            alt = str(Path(settings.BASE_DIR) / "saved_models" / "efficientnet_v1.pth")
             if os.path.exists(alt):
                 model_path = alt
             else:
