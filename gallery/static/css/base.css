@@ -49,9 +49,9 @@ nav {
 }
 
 .btn-mypage {
-    padding: 8px 16px;
+    padding: 7px 16px;
     background: #f1f3f5;
-    border-radius: 8px;
+    border-radius: 50px;
     transition: background 0.2s;
 }
 
@@ -71,14 +71,12 @@ nav {
 }
 
 .noti-btn {
-    background: none;
+    padding: 9.5px 16px;
+    background: #f1f3f5;
+    border-radius: 50px;
+    transition: background 0.2s;
     border: none;
     cursor: pointer;
-    font-size: 16px;
-    padding: 10px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
 }
 
 #noti-count {
