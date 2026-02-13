@@ -1,0 +1,93 @@
+/* 휴지통 헤더 및 안내 문구 */
+.trash-header {
+    margin-bottom: 30px;
+}
+
+.trash-header h2 {
+    font-size: 26px;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.trash-info {
+    color: #888;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+.back-link {
+    display: inline-block;
+    color: #007bff;
+    font-weight: 500;
+    margin-bottom: 25px;
+    transition: transform 0.2s;
+}
+
+.back-link:hover {
+    transform: translateX(-5px);
+}
+
+/* 휴지통 그리드 및 카드 */
+.trash-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px;
+}
+
+.trash-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid #eee;
+    text-align: center;
+    transition: all 0.3s ease;
+    filter: grayscale(0.5); /* 전체적으로 톤다운 */
+}
+
+.trash-card:hover {
+    filter: grayscale(0); /* 호버 시에만 컬러 */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.trash-img {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+/* 조작 버튼 */
+.trash-btns {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.btn-trash-action {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.btn-restore {
+    background-color: #e7f1ff;
+    color: #007bff;
+}
+
+.btn-restore:hover {
+    background-color: #d0e3ff;
+}
+
+.btn-delete-perm {
+    background-color: #fff5f5;
+    color: #ff4757;
+}
+
+.btn-delete-perm:hover {
+    background-color: #ffe0e0;
+}

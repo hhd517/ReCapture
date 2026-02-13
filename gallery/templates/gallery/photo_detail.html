@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/photo_detail.css' %}">
+
+<div class="detail-container">
+    <div class="detail-image-wrapper">
+        <img src="{{ photo.image.url }}" alt="상세 이미지">
+    </div>
+    
+    <div class="detail-info-wrapper">
+        <h3>📄 상세 정보</h3>
+
+        <button id="bookmark-btn" onclick="toggleBookmark({{ photo.id }}, '{{ csrf_token }}')">
+            {% if photo.is_bookmarked %}
+                <span id="bookmark-icon" style="color: orange;">★ 북마크 취소</span>
+            {% else %}
+                <span id="bookmark-icon" style="color: #888;">☆ 북마크 추가</span>
+            {% endif %}
+        </button>
+
+        <ul class="info-list">
+            <li><strong>카테고리</strong> 
+                {% if photo.category.parent %}
+                    {{ photo.category.parent.name }} > {{ photo.category.name }}
+                {% elif photo.category %}
+                    {{ photo.category.name }}
+                {% else %}
+                    미분류
+                {% endif %}
+            </li>
+            <li><strong>등록일</strong> {{ photo.created_at|date:"Y-m-d H:i" }}</li>
+        </ul>
+
+        <div class="memo-section">
+            <h4>📝 메모</h4>
+            <textarea id="memo-content" rows="3" placeholder="메모를 입력하세요...">{{ photo.memo|default_if_none:"" }}</textarea>
+            <button class="btn-save-memo" onclick="saveMemo({{ photo.id }}, '{{ csrf_token }}')">저장/수정</button>
+        </div>
+
+        <div class="detail-actions">
+            <button class="btn-trash" onclick="moveToTrash({{ photo.id }}, '{{ csrf_token }}')">
+                🗑️ 휴지통으로 이동
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'js/photo_detail.js' %}"></script>
+{% endblock %}

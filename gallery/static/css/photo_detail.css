@@ -1,0 +1,143 @@
+/* 상세 페이지 컨테이너 */
+.detail-container {
+    max-width: 800px;
+    margin: 40px auto;
+    background: #fff;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    display: flex;
+    gap: 30px;
+}
+
+/* 이미지 영역 */
+.detail-image-wrapper {
+    flex: 1;
+    text-align: center;
+}
+
+.detail-image-wrapper img {
+    width: 100%;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    object-fit: contain;
+}
+
+/* 정보 영역 */
+.detail-info-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.detail-info-wrapper h3 {
+    font-size: 22px;
+    margin-bottom: 20px;
+    color: #1a1a1a;
+}
+
+/* 북마크 버튼 */
+#bookmark-btn {
+    align-self: flex-start;
+    background: #fff;
+    border: 1px solid #eee;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+    margin-bottom: 25px;
+}
+
+#bookmark-btn:hover {
+    background: #f8f9fa;
+    border-color: #ddd;
+}
+
+/* 정보 리스트 */
+.info-list {
+    list-style: none;
+    margin-bottom: 25px;
+}
+
+.info-list li {
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f1f1;
+    font-size: 15px;
+    color: #666;
+}
+
+.info-list li strong {
+    color: #333;
+    margin-right: 10px;
+}
+
+/* 메모 섹션 */
+.memo-section h4 {
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+#memo-content {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #eee;
+    border-radius: 10px;
+    background: #fdfdfd;
+    resize: none;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+#memo-content:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.btn-save-memo {
+    width: 100%;
+    padding: 10px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+/* 액션 버튼 (휴지통) */
+.detail-actions {
+    margin-top: auto;
+    padding-top: 20px;
+}
+
+.btn-trash {
+    width: 100%;
+    background: #fff;
+    color: #ff4d4d;
+    border: 1px solid #ffeded;
+    padding: 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.btn-trash:hover {
+    background: #ffeded;
+}
+
+@media (max-width: 768px) {
+    .detail-container {
+        flex-direction: column; /* 가로에서 세로로 변경 */
+        padding: 20px;
+    }
+
+    .detail-image-wrapper img {
+        max-width: 100%; /* 이미지가 화면 밖으로 나가지 않게 */
+    }
+    
+    .detail-info-wrapper {
+        width: 100%;
+    }
+}
