@@ -8,27 +8,39 @@
 
 .action-buttons {
     display: flex;
-    gap: 12px;
+    gap: 10px;
+    justify-content: flex-end; /* 오른쪽으로 배치 */
+    margin-bottom: 25px;
 }
 
 .btn-action {
-    padding: 12px 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 18px; /* 크기 살짝 축소하여 정갈하게 */
     border: none;
-    border-radius: 10px;
-    font-weight: 700;
+    border-radius: 8px; /* 둥근 모서리 최적화 */
+    font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.btn-upload { background-color: #28a745; }
-.btn-upload:hover { background-color: #218838; transform: translateY(-2px); }
+/* 개별 버튼 호버 및 색상 */
+.btn-upload { background-color: #2ecc71; } /* 조금 더 산뜻한 초록색 */
+.btn-upload:hover { background-color: #27ae60; transform: translateY(-1px); }
 
 .btn-google { background-color: #4285f4; }
-.btn-google:hover { background-color: #357ae8; transform: translateY(-2px); }
+.btn-google:hover { background-color: #357ae8; transform: translateY(-1px); }
 
-.btn-classify { background-color: #ff6b6b; }
-.btn-classify:hover { background-color: #ee5253; transform: translateY(-2px); }
+.btn-classify { 
+    background-color: #ffffff; 
+    color: #ff6b6b; 
+    border: 1px solid #ff6b6b; 
+}
+.btn-classify:hover { background-color: #fff5f5; }
 
 /* 필터바 디자인 */
 .filter-bar, .sub-filter-bar {
