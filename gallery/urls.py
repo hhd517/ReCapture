@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from .views import bookmark_views
 from .views import base_views
+from .views import category_views
 
 app_name = 'gallery'
 
@@ -12,6 +13,7 @@ urlpatterns = [
     path('photos/', views.photo_list, name='photo_list'),
     path('photos/<int:photoid>/', views.photo_detail, name='photo_detail'),
     path('photos/<int:photo_id>/bookmark/', bookmark_views.toggle_bookmark, name='toggle_bookmark'),
+    path('photos/move/', category_views.move_photos, name='move_photos'),
     
     # 1. 사진 북마크
     path('bookmarks/', views.bookmark_list, name='bookmark_list'), # GET: 목록 조회

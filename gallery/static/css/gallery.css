@@ -168,6 +168,45 @@
     cursor: pointer;
 }
 
+.move-control-bar {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 500px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 15px 25px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 2000;
+}
+
+.edit-checkbox-wrapper {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 15;
+}
+
+/* 체크박스 디자인도 세련되게 */
+.photo-select-checkbox {
+    width: 22px;
+    height: 22px;
+    cursor: pointer;
+    accent-color: #007bff;
+}
+
+/* 선택된 사진 카드 강조 */
+.photo-card.selected {
+    outline: 3px solid #007bff;
+    border-radius: 12px;
+}
+
 /* 반응형 (모바일) */
 @media (max-width: 768px) {
     header {

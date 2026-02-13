@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from gallery.models import Photo, Category
 import json
+from django.views.decorators.http import require_POST
 
 @csrf_exempt
 @login_required
@@ -26,3 +27,20 @@ def add_category(request):
             category_key=f"sub_{timezone.now().timestamp()}" # 임의 키 생성
         )
         return JsonResponse({"success": True, "id": new_cat.id})
+    
+@require_POST
+def move_photos(request):
+    try:
+        data = json.loads(request.body)
+        photo_ids = data.get('photoIds', [])
+        target_cat_id = data.get('categoryId')
+        
+        if not target_cat_id:
+            return JsonResponse({'success': False, 'message': '대상 폴더를 선택해주세요.'})
+
+        # 한꺼번에 업데이트 (효율적)
+        Photo.objects.filter(id__in=photo_ids, user=request.user).update(category_id=target_cat_id)
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})

@@ -62,6 +62,10 @@
         <i class="fa-solid fa-arrows-rotate"></i>
     </button>
     {% endif %}
+
+    <button class="btn-action" id="editModeBtn" title="사진 편집">
+        <i class="fa-solid fa-ellipsis-vertical"></i>
+    </button>
 </div>
 
 <div id="importProgress" style="display: none; padding: 15px; background: #e3f2fd; border-radius: 8px; margin-bottom: 20px;">
@@ -123,9 +127,23 @@
 </div>
 {% endif %}
 
+<div id="moveControlBar" class="move-control-bar" style="display: none;">
+    <div class="move-actions">
+        <select id="targetCategory" class="custom-select" style="width: auto; margin-right: 10px;">
+            <option value="">이동할 폴더 선택</option>
+            {% for cat in categories %}
+                <option value="{{ cat.id }}">{{ cat.name }}</option>
+            {% endfor %}
+        </select>
+        <button onclick="moveSelectedPhotos()" class="btn-save" style="width: auto; padding: 8px 20px; margin: 0;">이동</button>
+        <button onclick="exitEditMode()" class="btn-action" style="background:#666;">취소</button>
+    </div>
+</div>
+
 <div class="gallery-grid">
     {% for photo in photos %}
-        <div class="photo-card" style="position: relative;">
+        <div class="photo-card" data-photo-id="{{ photo.id }}" style="position: relative;">
+            
             <button class="bookmark-btn" 
                     data-photo-id="{{ photo.id }}" 
                     onclick="toggleBookmark(this)"
@@ -136,6 +154,13 @@
                     <i class="fa-regular fa-bookmark" style="color: white; font-size: 20px; filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));"></i>
                 {% endif %}
             </button>
+
+            <div class="edit-checkbox-wrapper" 
+                 style="display: none; position: absolute; top: 10px; right: 10px; z-index: 15;">
+                <input type="checkbox" class="photo-select-checkbox" value="{{ photo.id }}" 
+                       style="width: 22px; height: 22px; cursor: pointer; accent-color: #007bff; margin: 0; vertical-align: top;">
+            </div>
+
             <a href="{% url 'gallery:photo_detail' photo.id %}">
                 <img src="{{ photo.image.url }}" class="photo-img" alt="영수증 사진">
             </a>
