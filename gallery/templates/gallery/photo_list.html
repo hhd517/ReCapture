@@ -10,6 +10,7 @@
 {% block content %}
 <link rel="stylesheet" href="{% static 'css/gallery.css' %}">
 
+
 <div id="filterSidebar" class="filter-sidebar">
     <div class="sidebar-header">
         <h3>카테고리</h3>
@@ -49,6 +50,16 @@
 <div id="sidebarOverlay" class="sidebar-overlay"></div>
 
 <div class="gallery-header">
+    <form method="GET" action="{% url 'gallery:photo_list' %}" class="header-search-form">
+        <input type="text" name="q" value="{{ query|default:'' }}" placeholder="메모로 검색" class="search-input">
+        <button type="submit" class="search-btn">
+            <i class="fa-solid fa-magnifying-glass"></i>
+        </button>
+
+        {% if current_category %}<input type="hidden" name="category_id" value="{{ current_category }}">{% endif %}
+        {% if current_sub_category %}<input type="hidden" name="sub_category_id" value="{{ current_sub_category }}">{% endif %}
+        {% if is_bookmarked %}<input type="hidden" name="bookmarked" value="true">{% endif %}
+    </form>
     <button class="btn-action btn-upload" onclick="document.getElementById('fileInput').click()">
         <i class="fa-solid fa-images"></i>
     </button>
@@ -217,7 +228,12 @@
         </div>
     {% empty %}
         <div style="grid-column: 1/-1; text-align: center; padding: 50px; color: #999;">
-            조건에 맞는 사진이 없습니다.
+            {% if query %}
+                <i class="fa-solid fa-magnifying-glass" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>
+                '<strong>{{ query }}</strong>'에 대한 검색 결과가 없습니다.
+            {% else %}
+                조건에 맞는 사진이 없습니다.
+            {% endif %}
         </div>
     {% endfor %}
 </div>
