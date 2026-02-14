@@ -191,3 +191,66 @@ async function deleteSelectedPhotos() {
         alert('서버와 통신 중 오류가 발생했습니다.');
     }
 }
+
+// 1. 소분류 이름 수정
+async function editSubCategory(subId, currentName) {
+    const newName = prompt('수정할 폴더 이름을 입력하세요:', currentName);
+    if (!newName || newName === currentName) return;
+
+    try {
+        const response = await fetch(`/gallery/api/sub-categories/${subId}/edit/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': CSRF_TOKEN,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name: newName })
+        });
+        const data = await response.json();
+        if (data.success) location.reload();
+    } catch (e) {
+        alert('수정 실패');
+    }
+}
+
+// 2. 소분류 삭제
+async function deleteSubCategory(subId, subName) {
+    if (!confirm(`'${subName}' 폴더를 삭제할까요? 폴더 안의 사진들은 대분류(미분류)로 이동됩니다.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/gallery/api/sub-categories/${subId}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': CSRF_TOKEN }
+        });
+        const data = await response.json();
+        if (data.success) {
+            // 현재 보고 있던 폴더를 삭제했다면 부모 폴더로 이동
+            location.href = `?category_id=${data.parent_id}`;
+        }
+    } catch (e) {
+        alert('삭제 실패');
+    }
+}
+
+let isSubEditMode = false;
+
+function toggleSubEditMode(btn) {
+    isSubEditMode = !isSubEditMode;
+    const iconContainers = document.querySelectorAll('.sub-management-icons');
+    
+    if (isSubEditMode) {
+        // 편집 모드 ON
+        iconContainers.forEach(el => el.style.display = 'flex');
+        btn.style.background = '#007bff';
+        btn.style.color = 'white';
+        btn.innerHTML = '<i class="fa-solid fa-check"></i>'; // 체크 아이콘으로 변경
+    } else {
+        // 편집 모드 OFF
+        iconContainers.forEach(el => el.style.display = 'none');
+        btn.style.background = '#f1f1f1';
+        btn.style.color = '#666';
+        btn.innerHTML = '<i class="fa-solid fa-gear"></i>'; // 다시 톱니바퀴로
+    }
+}

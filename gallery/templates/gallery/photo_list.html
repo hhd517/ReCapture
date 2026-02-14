@@ -106,24 +106,44 @@
 </div>
 
 {% if current_category %}
-<div class="sub-filter-bar pc-only" style="background: #ffffff; padding: 15px 25px; border-radius: 15px; border: 1px solid #eee; margin-bottom: 20px; display: flex; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
-    <strong style="margin-right: 15px; color: #555;">📁 세부 폴더:</strong>
+<div class="sub-filter-bar pc-only" style="background: #ffffff; padding: 15px 25px; border-radius: 15px; border: 1px solid #eee; margin-bottom: 20px; display: flex; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02); flex-wrap: wrap; gap: 8px;">
+    <span style="margin-right: 10px; color: #555; font-weight: 600;">📁 세부 폴더:</span>
+    
     <a href="?category_id={{ current_category }}{% if is_bookmarked %}&bookmarked=true{% endif %}"
        class="filter-link {% if not current_sub_category %}active{% endif %}" 
-       style="margin-right: 12px; padding: 6px 14px; border-radius: 20px; font-size: 14px; text-decoration: none; color: #666;">
+       style="padding: 6px 14px; border-radius: 20px; font-size: 14px; text-decoration: none; color: #666;">
        전체
     </a>
+
     {% for sub in sub_categories %}
         <a href="?category_id={{ current_category }}&sub_category_id={{ sub.id }}{% if is_bookmarked %}&bookmarked=true{% endif %}"
-           class="filter-link {% if current_sub_category == sub.id %}active{% endif %}"
-           style="margin-right: 12px; padding: 6px 14px; border-radius: 20px; font-size: 14px; text-decoration: none; color: #666;">
-           #{{ sub.name }}
+        class="filter-link {% if current_sub_category == sub.id %}active{% endif %}"
+        style="background: #f8f9fa; position: relative; display: inline-flex; align-items: center; gap: 8px;">
+        
+        {{ sub.name }}
+
+        <span class="sub-management-icons" style="display: none; gap: 5px; border-left: 1px solid #ddd; padding-left: 5px; margin-left: 5px;">
+                <button onclick="event.preventDefault(); editSubCategory({{ sub.id }}, '{{ sub.name }}')" style="background: none; border: none; cursor: pointer; color: #999; font-size: 10px; padding: 0;">
+                    <i class="fa-solid fa-pen"></i>
+                </button>
+                <button onclick="event.preventDefault(); deleteSubCategory({{ sub.id }}, '{{ sub.name }}')" style="background: none; border: none; cursor: pointer; color: #ff4757; font-size: 10px; padding: 0;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+        </span>
         </a>
     {% endfor %}
-    <button onclick="createSubCategory({{ current_category }}, '{{ csrf_token }}')"
-            style="margin-left: 15px; border: 1px dashed #007bff; background: white; color: #007bff; cursor: pointer; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 600;">
-        + 폴더 추가
-    </button>
+
+    <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
+        <button onclick="toggleSubEditMode(this)" id="subEditToggle" title="폴더 관리"
+                style="background: #f1f1f1; border: none; color: #666; cursor: pointer; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+            <i class="fa-solid fa-gear"></i>
+        </button>
+        
+        <button onclick="createSubCategory({{ current_category }}, '{{ csrf_token }}')"
+                style="border: 1px dashed #007bff; background: white; color: #007bff; cursor: pointer; border-radius: 20px; padding: 6px 12px; font-size: 13px; font-weight: 600;">
+            <i class="fa-solid fa-plus"></i> 추가
+        </button>
+    </div>
 </div>
 {% endif %}
 

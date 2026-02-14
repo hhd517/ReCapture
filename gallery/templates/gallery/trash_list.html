@@ -58,10 +58,19 @@
     </div>
 
     <div class="move-actions">
-        <div class="button-group">
-            <button onclick="bulkRestore()" class="btn-move-confirm" style="background: #2ecc71;">선택 복구</button>
-            <button onclick="bulkPermanentDelete()" class="btn-delete-confirm">영구 삭제</button>
-            <button onclick="exitTrashEdit()" class="btn-move-cancel">
+        <div class="button-group" style="display: flex; gap: 8px; align-items: center;">
+            <button onclick="bulkRestore()" 
+                    style="background-color: #2ecc71; color: white; border: none; padding: 10px 18px; border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 10px rgba(46, 204, 113, 0.2);">
+                선택 복구
+            </button>
+
+            <button onclick="bulkPermanentDelete()" 
+                    style="background-color: #ff4757; color: white; border: none; padding: 10px 18px; border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 10px rgba(255, 71, 87, 0.2);">
+                영구 삭제
+            </button>
+
+            <button onclick="exitTrashEdit()" 
+                    style="background-color: #f1f1f1; color: #666; border: none; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s;">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>

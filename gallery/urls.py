@@ -39,6 +39,8 @@ urlpatterns = [
 
     # 5. 세부 카테고리 만들기
     path('categories/add/', views.add_category, name='add_category'),
+    path('api/sub-categories/<int:sub_id>/edit/', category_views.edit_sub_category, name='edit_sub_category'),
+    path('api/sub-categories/<int:sub_id>/delete/', category_views.delete_sub_category, name='delete_sub_category'),
 
     path('settings/', base_views.settings_view, name='settings'),
 

@@ -65,3 +65,39 @@ def get_sub_categories(request):
         'success': True, 
         'sub_categories': data
     })
+
+@login_required
+def edit_sub_category(request, sub_id):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            new_name = data.get('name')
+            
+            # 본인 카테고리인지 확인하며 가져오기
+            category = get_object_or_404(Category, id=sub_id, user=request.user)
+            category.name = new_name
+            category.save()
+            
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+@login_required
+def delete_sub_category(request, sub_id):
+    if request.method == 'POST':
+        try:
+            category = get_object_or_404(Category, id=sub_id, user=request.user)
+            parent_id = category.parent_id # 부모 카테고리 ID 보관
+            
+            # 💡 중요: 삭제되는 폴더 안의 사진들을 부모(대분류) 폴더로 이동
+            Photo.objects.filter(category=category, user=request.user).update(category_id=parent_id)
+            
+            # 카테고리 삭제
+            category.delete()
+            
+            return JsonResponse({
+                'success': True, 
+                'parent_id': parent_id # 삭제 후 부모 페이지로 리다이렉트하기 위해 전달
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)

@@ -65,11 +65,11 @@
 }
 
 .btn-trash-action {
-    padding: 6px 12px;
+    /* padding: 6px 12px; */
     border: none;
     border-radius: 6px;
     font-size: 13px;
-    font-weight: 600;
+    /* font-weight: 600; */
     cursor: pointer;
     transition: opacity 0.2s;
 }
