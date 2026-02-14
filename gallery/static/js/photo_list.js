@@ -59,46 +59,72 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// 3. 사진 이동 실행 함수
-async function moveSelectedPhotos() {
-    const selectedIds = Array.from(document.querySelectorAll('.photo-select-checkbox:checked'))
-                             .map(cb => cb.value);
-    const categoryId = document.getElementById('targetCategory').value;
-
-    if (selectedIds.length === 0) {
-        alert('선택된 사진이 없습니다.');
-        return;
-    }
-    if (!categoryId) {
-        alert('이동할 폴더를 선택해주세요.');
+// 대분류 선택 시 소분류 목록을 업데이트하는 함수
+async function updateSubCategoryOptions() {
+    const parentId = document.getElementById('targetCategory').value;
+    const subSelect = document.getElementById('targetSubCategory');
+    
+    // 선택을 초기화했을 경우 소분류 드롭다운 숨김
+    if (!parentId) {
+        subSelect.style.display = 'none';
         return;
     }
 
     try {
-        const response = await fetch('/gallery/photos/move/', {
-            method: 'POST',
-            headers: {
-                // 💡 상단에 정의한 CSRF_TOKEN 변수를 사용합니다.
-                'X-CSRFToken': CSRF_TOKEN, 
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ 
-                photoIds: selectedIds, 
-                categoryId: categoryId 
-            })
-        });
-
+        // 서버로부터 해당 대분류의 소분류 리스트를 가져옴
+        const response = await fetch(`/gallery/api/sub-categories/?parent_id=${parentId}`);
         const data = await response.json();
 
-        if (data.success) {
-            alert('이동이 완료되었습니다.');
-            location.reload(); 
+        if (data.success && data.sub_categories.length > 0) {
+            // 옵션 초기화
+            subSelect.innerHTML = '<option value="">소분류 선택 (선택 사항)</option>';
+            
+            // 가져온 데이터로 옵션 추가
+            data.sub_categories.forEach(sub => {
+                const option = document.createElement('option');
+                option.value = sub.id;
+                option.textContent = sub.name;
+                subSelect.appendChild(option);
+            });
+            
+            subSelect.style.display = 'inline-block'; // 소분류가 있으면 보여줌
         } else {
-            alert('이동 실패: ' + (data.message || '알 수 없는 오류'));
+            subSelect.style.display = 'none'; // 소분류가 없으면 숨김
         }
     } catch (error) {
-        console.error('Move error:', error);
-        alert('서버와 통신 중 오류가 발생했습니다.');
+        console.error('Sub-category fetch error:', error);
+    }
+}
+
+// 이동 실행 함수 수정 (소분류 ID 우선 적용)
+async function moveSelectedPhotos() {
+    const selectedIds = Array.from(document.querySelectorAll('.photo-select-checkbox:checked')).map(cb => cb.value);
+    
+    const parentId = document.getElementById('targetCategory').value;
+    const subId = document.getElementById('targetSubCategory').value;
+    
+    // 소분류가 선택되었다면 소분류 ID를 사용하고, 아니면 대분류 ID를 사용
+    const targetId = subId || parentId;
+
+    if (selectedIds.length === 0 || !targetId) {
+        alert('사진과 이동할 폴더를 모두 선택해주세요!');
+        return;
+    }
+
+    const response = await fetch('/gallery/photos/move/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': CSRF_TOKEN,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+            photoIds: selectedIds, 
+            categoryId: targetId // 최종 결정된 ID 전송
+        })
+    });
+
+    if ((await response.json()).success) {
+        location.reload();
     }
 }
 
@@ -126,4 +152,42 @@ function exitEditMode() {
 
     // 5. 전역 변수 상태 업데이트 (편집 버튼 로직과 동기화)
     isEditMode = false; 
+}
+
+async function deleteSelectedPhotos() {
+    const selectedIds = Array.from(document.querySelectorAll('.photo-select-checkbox:checked'))
+                             .map(cb => cb.value);
+
+    if (selectedIds.length === 0) {
+        alert('삭제할 사진을 선택해주세요.');
+        return;
+    }
+
+    if (!confirm(`선택한 ${selectedIds.length}장의 사진을 휴지통으로 보낼까요?`)) {
+        return;
+    }
+
+    try {
+        // 기존 trash_views.py의 로직을 활용할 수 있도록 요청을 보냅니다.
+        const response = await fetch('/gallery/photos/bulk-trash/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': CSRF_TOKEN,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ photoIds: selectedIds })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('휴지통으로 이동되었습니다.');
+            location.reload();
+        } else {
+            alert('삭제 실패: ' + (data.error || '알 수 없는 오류'));
+        }
+    } catch (error) {
+        console.error('Delete error:', error);
+        alert('서버와 통신 중 오류가 발생했습니다.');
+    }
 }

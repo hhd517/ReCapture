@@ -128,15 +128,34 @@
 {% endif %}
 
 <div id="moveControlBar" class="move-control-bar" style="display: none;">
+    <div class="move-info">
+        <span class="count-badge" id="selectedCount">0</span>
+        <span class="count-text">장 선택됨</span>
+    </div>
+
     <div class="move-actions">
-        <select id="targetCategory" class="custom-select" style="width: auto; margin-right: 10px;">
-            <option value="">이동할 폴더 선택</option>
-            {% for cat in categories %}
-                <option value="{{ cat.id }}">{{ cat.name }}</option>
-            {% endfor %}
-        </select>
-        <button onclick="moveSelectedPhotos()" class="btn-save" style="width: auto; padding: 8px 20px; margin: 0;">이동</button>
-        <button onclick="exitEditMode()" class="btn-action" style="background:#666;">취소</button>
+        <div class="select-wrapper">
+            <select id="targetCategory" class="move-select" onchange="updateSubCategoryOptions()">
+                <option value="">대분류 선택</option>
+                {% for cat in categories %}
+                    <option value="{{ cat.id }}">{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+            
+            <select id="targetSubCategory" class="move-select sub-select" style="display: none;">
+                <option value="">소분류 (선택 사항)</option>
+            </select>
+        </div>
+
+        <div class="button-group">
+            <button onclick="moveSelectedPhotos()" class="btn-move-confirm">이동</button>
+            <button onclick="deleteSelectedPhotos()" class="btn-delete-confirm" title="휴지통으로 이동">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
+            <button onclick="exitEditMode()" class="btn-move-cancel">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
     </div>
 </div>
 

@@ -44,3 +44,24 @@ def move_photos(request):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
+    
+def get_sub_categories(request):
+    """
+    대분류 ID를 받아 그에 속한 소분류 목록을 반환하는 API
+    """
+    parent_id = request.GET.get('parent_id')
+    
+    if not parent_id:
+        return JsonResponse({'success': False, 'message': '부모 ID가 없습니다.'}, status=400)
+        
+    # 부모 ID가 있고, 현재 로그인한 사용자의 카테고리만 필터링
+    sub_categories = Category.objects.filter(parent_id=parent_id, user=request.user)
+    
+    data = [
+        {'id': sub.id, 'name': sub.name} for sub in sub_categories
+    ]
+    
+    return JsonResponse({
+        'success': True, 
+        'sub_categories': data
+    })

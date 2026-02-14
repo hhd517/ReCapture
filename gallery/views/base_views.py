@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from gallery.models import Photo, UserSetting, Category
+from django.db.models import Q
 
 @login_required
 @login_required
@@ -32,6 +33,8 @@ def settings_view(request):
 @login_required(login_url='/accounts/login/')
 def photo_list(request):
     photos = Photo.objects.filter(user=request.user, is_trashed=False)
+    
+    # 대분류 카테고리만 가져오기 (parent가 없는 것들)
     categories = Category.objects.filter(user=request.user, parent=None)
 
     category_id = request.GET.get('category_id')
@@ -41,12 +44,11 @@ def photo_list(request):
     sub_categories = []
     current_category_name = None
 
-    # 1. 카테고리 필터 적용
+    # 1. 카테고리 필터 적용 로직 개선
     if category_id:
-        photos = photos.filter(category_id=category_id)
+        # 현재 대분류 정보 및 소분류 리스트 가져오기
         sub_categories = Category.objects.filter(user=request.user, parent_id=category_id)
-
-        # 현재 카테고리 이름 가져오기
+        
         try:
             current_cat = Category.objects.get(id=category_id)
             current_category_name = current_cat.name
@@ -54,13 +56,17 @@ def photo_list(request):
             pass
 
         if sub_category_id:
+            # [Case 1] 소분류가 선택된 경우: 해당 소분류 사진만 필터링
             photos = photos.filter(category_id=sub_category_id)
+        else:
+            # [Case 2] 대분류만 선택된 경우: 대분류 본인 + 하위 소분류 사진 모두 포함
+            sub_cat_ids = sub_categories.values_list('id', flat=True)
+            photos = photos.filter(Q(category_id=category_id) | Q(category_id__in=sub_cat_ids))
+            # 💡 기존의 photos.filter(category_id=category_id)를 위 코드로 대체했습니다.
 
     # 2. 북마크 필터 적용
     if is_bookmarked == 'true':
         photos = photos.filter(is_bookmarked=True)
-
-    categories = Category.objects.filter(user=request.user, parent=None)
 
     return render(request, 'gallery/photo_list.html', {
         'photos': photos.order_by('-created_at'),
