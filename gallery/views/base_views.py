@@ -40,9 +40,18 @@ def photo_list(request):
     category_id = request.GET.get('category_id')
     sub_category_id = request.GET.get('sub_category_id')
     is_bookmarked = request.GET.get('bookmarked')
+    query = request.GET.get('q')
 
     sub_categories = []
     current_category_name = None
+
+    # [검색 기능 추가] 검색어가 있으면 메모(memo) 또는 파일명(filename)에서 검색
+    if query:
+        photos = photos.filter(
+            Q(memo__icontains=query) | 
+            Q(filename__icontains=query)
+        )
+
 
     # 1. 카테고리 필터 적용 로직 개선
     if category_id:
@@ -75,7 +84,8 @@ def photo_list(request):
         'current_category': int(category_id) if category_id else None,
         'current_sub_category': int(sub_category_id) if sub_category_id else None,
         'current_category_name': current_category_name,
-        'is_bookmarked': is_bookmarked == 'true'
+        'is_bookmarked': is_bookmarked == 'true',
+        'query': query,
     })
 
 @login_required(login_url='/accounts/login/')

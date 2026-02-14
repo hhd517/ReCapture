@@ -4,6 +4,7 @@ from .views import bookmark_views
 from .views import base_views
 from .views import category_views
 from .views import trash_views
+from .views import memo_views
 
 app_name = 'gallery'
 
@@ -22,7 +23,7 @@ urlpatterns = [
     path('bookmarks/<int:photoid>/', views.delete_bookmark, name='delete_bookmark'), # DELETE: 해제
     
     # 2. 사진 메모 (upsert 방식 적용)
-    path('memos/photos/<int:photoid>/', views.manage_memo, name='manage_memo'), # PUT: 생성/수정, GET: 조회, DELETE: 삭제
+    path('memos/photos/<int:photoid>/', memo_views.manage_memo, name='manage_memo'), # PUT: 생성/수정, GET: 조회, DELETE: 삭제
     
     # 3. 리마인드 알림
     path('reminders/', views.manage_reminders, name='manage_reminders'), # POST, GET
@@ -45,4 +46,6 @@ urlpatterns = [
     path('settings/', base_views.settings_view, name='settings'),
 
     path('api/sub-categories/', category_views.get_sub_categories, name='get_sub_categories'),
+
+
 ]

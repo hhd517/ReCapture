@@ -5,6 +5,41 @@
     gap: 15px;
     margin: 30px 0 20px;
 }
+.header-search-form {
+    margin-right: auto; 
+    display: flex;
+    position: relative;
+    width: 100%;
+    max-width: 300px; 
+}
+
+.search-input {
+    width:100%;
+    height: 45px; 
+    padding: 0 45px 0 20px;
+    border: 1px solid #ddd;
+    border-radius: 25px;
+    font-size: 14px;
+    background-color: #f9f9f9;
+    transition: border-color 0.2s;
+}
+
+.search-input:focus {
+    border-color: #007bff;
+    background-color: white;
+}
+
+.search-btn {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: none;
+    color: #888;
+    cursor: pointer;
+    font-size: 16px;
+}
 
 /* 버튼 공통 디자인 */
 .btn-action {
@@ -397,5 +432,12 @@
         max-width: 100px;
         font-size: 12px;
         padding: 6px 8px;
+    }
+    .header-search-form {
+        max-width: 100%;
+        margin-bottom: 15px;
+    }
+    .search-input {
+        height: 40px;
     }
 }
