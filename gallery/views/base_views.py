@@ -20,7 +20,7 @@ def settings_view(request):
         setting.is_auto_trash_enabled = request.POST.get('is_auto_trash') == 'on'
         setting.auto_trash_days = int(request.POST.get('auto_trash_days', 30))
         setting.trash_expiry_days = int(request.POST.get('trash_expiry', 30))
-        setting.auto_trash_categories.set(request.POST.getlist('trash_cats'))
+        # setting.auto_trash_categories.set(request.POST.getlist('trash_cats'))
         
         setting.save()
         return redirect('gallery:settings')

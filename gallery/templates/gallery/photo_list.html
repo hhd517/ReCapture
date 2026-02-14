@@ -1,6 +1,12 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block sidebar_toggle %}
+    <button id="sidebarToggle" class="sidebar-open-btn">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+{% endblock sidebar_toggle %}
+
 {% block content %}
 <link rel="stylesheet" href="{% static 'css/gallery.css' %}">
 

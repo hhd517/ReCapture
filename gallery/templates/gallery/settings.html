@@ -211,7 +211,10 @@
 
     <section class="settings-section">
         <div class="switch-row">
-            <span class="section-title" style="margin-bottom:0;">🗑️ 자동 휴지통 이동 서비스</span>
+            <div class="title-group">
+                <span class="section-title" style="margin-bottom:0;">🗑️ 휴지통 자동 비우기</span>
+                <p style="font-size: 13px; color: #999; margin-top: 4px;">휴지통에 있는 사진을 일정 기간 후 영구 삭제합니다.</p>
+            </div>
             <label class="switch">
                 <input type="checkbox" id="trashToggle" name="is_auto_trash" {% if setting.is_auto_trash_enabled %}checked{% endif %}>
                 <span class="slider"></span>
@@ -219,26 +222,12 @@
         </div>
 
         <div id="trashOptions" style="margin-top: 20px;">
-            <p style="font-size: 14px; color: #888; margin-bottom: 8px;">휴지통 비우기 빈도</p>
+            <p style="font-size: 14px; color: #888; margin-bottom: 8px;">자동 삭제 주기</p>
             <select name="trash_expiry" class="custom-select">
-                <option value="3" {% if setting.trash_expiry_days == 3 %}selected{% endif %}>3일 후 자동 영구 삭제</option>
-                <option value="15" {% if setting.trash_expiry_days == 15 %}selected{% endif %}>15일 후 자동 영구 삭제</option>
-                <option value="30" {% if setting.trash_expiry_days == 30 %}selected{% endif %}>30일 후 자동 영구 삭제</option>
-                <option value="0" {% if setting.trash_expiry_days == 0 %}selected{% endif %}>자동 삭제 안 함</option>
+                <option value="3" {% if setting.trash_expiry_days == 3 %}selected{% endif %}>휴지통 이동 3일 후 삭제</option>
+                <option value="15" {% if setting.trash_expiry_days == 15 %}selected{% endif %}>휴지통 이동 15일 후 삭제</option>
+                <option value="30" {% if setting.trash_expiry_days == 30 %}selected{% endif %}>휴지통 이동 30일 후 삭제</option>
             </select>
-
-            <div style="margin-top: 20px;">
-                <p style="font-size: 14px; color: #888; margin-bottom: 8px;">대상 카테고리 선택</p>
-                <div class="chip-group">
-                    {% for cat in categories %}
-                    <div class="chip-item">
-                        <input type="checkbox" id="trash_cat_{{ cat.id }}" name="trash_cats" value="{{ cat.id }}"
-                            {% if cat in setting.auto_trash_categories.all %}checked{% endif %}>
-                        <label for="trash_cat_{{ cat.id }}" class="chip-label">{{ cat.name }}</label>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
         </div>
     </section>
 
