@@ -11,7 +11,7 @@
     width: 45px;  /* 버튼을 정사각형으로 */
     height: 45px;
     padding: 0;
-    border-radius: 50%; /* 동그란 버튼 원하시면 50%, 살짝 각진 건 10px */
+    border-radius: 50%;
     border: none;
     display: flex;
     align-items: center;
@@ -35,6 +35,11 @@
 .btn-classify { 
     background-color: white;
     color: #007bff;
+}
+
+#editModeBtn {
+    background-color: #efefef;
+    color: black;
 }
 
 .trash-link {
@@ -123,6 +128,18 @@
     border-color: #ccc;
 }
 
+/* 세부 폴더 아이템 기본 배경 (미선택 시) */
+.sub-filter-bar .filter-link {
+    background: #f8f9fa; /* 미선택 시 기본 회색 배경 */
+    border: 1px solid transparent;
+}
+
+/* 선택 시 (파란색) */
+.sub-filter-bar .filter-link.active {
+    background: #007bff !important;
+    color: white !important;
+}
+
 /* 1. 사이드바 기본 스타일 */
 .filter-sidebar {
     position: fixed;
@@ -168,6 +185,165 @@
     cursor: pointer;
 }
 
+/* 하단 플로팅 바 컨테이너 */
+.move-control-bar {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 95%;
+    max-width: 600px;
+    background: rgba(255, 255, 255, 0.85); /* 투명도 있는 배경 */
+    backdrop-filter: blur(15px); /* 배경 블러 효과 */
+    -webkit-backdrop-filter: blur(15px);
+    padding: 12px 20px;
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 2100;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 선택 숫자 배지 */
+.move-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.count-badge {
+    background: #007bff;
+    color: white;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.count-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: #444;
+}
+
+/* 액션 및 드롭다운 그룹 */
+.move-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.select-wrapper {
+    display: flex;
+    gap: 8px;
+    max-width: 65%;
+}
+
+.move-select {
+    padding: 8px 12px;
+    border-radius: 12px;
+    border: 1px solid #e0e0e0;
+    background: white;
+    font-size: 13px;
+    color: #333;
+    cursor: pointer;
+    outline: none;
+    transition: 0.2s;
+    max-width: 140px;
+}
+
+.move-select:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+/* 삭제 버튼 스타일 */
+.btn-delete-confirm {
+    background: #ff4757; /* 붉은색 계열 */
+    color: white;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-delete-confirm:hover {
+    background: #ff6b81;
+    transform: scale(1.05);
+}
+
+.button-group {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.btn-move-confirm {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-move-confirm:hover {
+    background: #0056b3;
+}
+
+.btn-move-cancel {
+    background: #f1f1f1;
+    color: #666;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-move-cancel:hover {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.edit-checkbox-wrapper {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 15;
+}
+
+/* 체크박스 디자인도 세련되게 */
+.photo-select-checkbox {
+    width: 22px;
+    height: 22px;
+    cursor: pointer;
+    accent-color: #007bff;
+}
+
+/* 선택된 사진 카드 강조 */
+.photo-card.selected {
+    outline: 3px solid #007bff;
+    border-radius: 12px;
+}
+
 /* 반응형 (모바일) */
 @media (max-width: 768px) {
     header {
@@ -208,5 +384,18 @@
     .gallery-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 12px;
+    }
+
+    .move-control-bar {
+        padding: 10px 15px;
+    }
+    .select-wrapper {
+        flex-direction: column;
+        gap: 4px;
+    }
+    .move-select {
+        max-width: 100px;
+        font-size: 12px;
+        padding: 6px 8px;
     }
 }

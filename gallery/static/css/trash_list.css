@@ -65,11 +65,11 @@
 }
 
 .btn-trash-action {
-    padding: 6px 12px;
+    /* padding: 6px 12px; */
     border: none;
     border-radius: 6px;
     font-size: 13px;
-    font-weight: 600;
+    /* font-weight: 600; */
     cursor: pointer;
     transition: opacity 0.2s;
 }
@@ -90,4 +90,16 @@
 
 .btn-delete-perm:hover {
     background-color: #ffe0e0;
+}
+
+/* 선택된 휴지통 카드 강조 */
+.trash-card.selected {
+    outline: 3px solid #007bff;
+    transform: scale(0.98);
+    opacity: 0.9;
+}
+
+/* 개별 버튼 영역 애니메이션 */
+.trash-btns {
+    transition: opacity 0.2s ease;
 }

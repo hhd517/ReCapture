@@ -6,10 +6,10 @@ from datetime import timedelta
 class Category(models.Model):
     # 6가지 고정 대분류 정의
     BASIC_CATEGORIES = [
-        ('finance', '결제/금융'),
+        ('finance', '결제/예약'),
         ('study_note', '학습/노트'),
-        ('info', '문서/정보'),
-        ('others', '기타정보(비정보)'),
+        ('info', '정보'),
+        ('others', '기타'),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='categories')
