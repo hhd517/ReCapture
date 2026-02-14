@@ -9,6 +9,17 @@ def settings_view(request):
     # 설정 객체가 없으면 생성
     setting, created = UserSetting.objects.get_or_create(user=request.user)
     categories = Category.objects.filter(user=request.user)
+    
+    # 구글 포토 연동 상태 확인
+    from photos.models import GoogleCredential
+    google_connected = False
+    google_email = None
+    try:
+        google_cred = GoogleCredential.objects.get(user=request.user)
+        google_connected = True
+        google_email = google_cred.google_email
+    except GoogleCredential.DoesNotExist:
+        pass
 
     if request.method == 'POST':
         # 알림 설정 업데이트
@@ -27,7 +38,9 @@ def settings_view(request):
 
     return render(request, 'gallery/settings.html', {
         'setting': setting,
-        'categories': categories
+        'categories': categories,
+        'google_connected': google_connected,
+        'google_email': google_email,
     })
 
 @login_required(login_url='/accounts/login/')

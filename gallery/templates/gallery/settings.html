@@ -165,6 +165,54 @@
         transform: translateY(-2px);
     }
 
+    /* 구글 포토 연동 버튼 */
+    .btn-connect {
+        width: 100%;
+        padding: 14px;
+        background: #4285f4; /* 구글 블루 */
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-connect:hover {
+        background: #3367d6;
+        transform: translateY(-1px);
+    }
+
+    .btn-unlink {
+        width: 100%;
+        padding: 14px;
+        background: #dc3545; /* 빨간색 */
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+
+    .btn-unlink:hover {
+        background: #c82333;
+        transform: translateY(-1px);
+    }
+
+    .btn-unlink:disabled,
+    .btn-connect:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
     .disabled-section {
         opacity: 0.5; /* 흐릿하게 */
         pointer-events: none; /* 클릭 차단 */
@@ -176,6 +224,43 @@
 <form method="post" class="settings-container">
     {% csrf_token %}
     <div class="settings-header">상세 설정</div>
+
+    <!-- 구글 포토 연동 섹션 -->
+    <section class="settings-section">
+        <div class="section-title">📷 구글 포토 연동</div>
+        
+        <div id="googleStatusContainer">
+            {% if google_connected %}
+            <!-- 연동된 상태 -->
+            <div style="background: #e7f3ff; border: 1px solid #007bff; border-radius: 12px; padding: 16px; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 18px;">✅</span>
+                    <span style="font-weight: 600; color: #007bff;">연동됨</span>
+                </div>
+                <div style="font-size: 14px; color: #666;">
+                    연동된 계정: <strong>{{ google_email }}</strong>
+                </div>
+            </div>
+            <button type="button" id="btnUnlinkGoogle" class="btn-unlink">
+                연동 해제
+            </button>
+            {% else %}
+            <!-- 연동되지 않은 상태 -->
+            <div style="background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 18px;">⚠️</span>
+                    <span style="font-weight: 600; color: #666;">연동되지 않음</span>
+                </div>
+                <div style="font-size: 14px; color: #888;">
+                    구글 포토를 연동하여 사진을 가져오세요.
+                </div>
+            </div>
+            <button type="button" id="btnConnectGoogle" class="btn-connect">
+                구글 포토 연동하기
+            </button>
+            {% endif %}
+        </div>
+    </section>
 
     <section class="settings-section">
         <div class="switch-row">
@@ -258,6 +343,98 @@
         // 2. 스위치 클릭 시 실시간 변경 이벤트 리스너
         reminderToggle.addEventListener('change', () => updateStatus(reminderToggle, reminderOptions));
         trashToggle.addEventListener('change', () => updateStatus(trashToggle, trashOptions));
+
+        // 3. 구글 포토 연동 버튼
+        const btnConnectGoogle = document.getElementById('btnConnectGoogle');
+        if (btnConnectGoogle) {
+            btnConnectGoogle.addEventListener('click', async function() {
+                try {
+                    this.disabled = true;
+                    this.textContent = '인증 중...';
+                    
+                    // 인증 URL 가져오기
+                    const response = await fetch('/api/v1/photos/google/authorize', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        credentials: 'include'
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success && data.data.authUrl) {
+                        // 구글 OAuth 페이지로 리다이렉트
+                        window.location.href = data.data.authUrl;
+                    } else {
+                        alert('인증 URL 생성에 실패했습니다.');
+                        this.disabled = false;
+                        this.textContent = '구글 포토 연동하기';
+                    }
+                } catch (error) {
+                    console.error('Google auth error:', error);
+                    alert('연동 중 오류가 발생했습니다.');
+                    this.disabled = false;
+                    this.textContent = '구글 포토 연동하기';
+                }
+            });
+        }
+
+        // 4. 구글 포토 연동 해제 버튼
+        const btnUnlinkGoogle = document.getElementById('btnUnlinkGoogle');
+        if (btnUnlinkGoogle) {
+            btnUnlinkGoogle.addEventListener('click', async function() {
+                if (!confirm('구글 포토 연동을 해제하시겠습니까?\n다른 계정으로 재연동할 수 있습니다.')) {
+                    return;
+                }
+                
+                try {
+                    this.disabled = true;
+                    this.textContent = '해제 중...';
+                    
+                    const response = await fetch('/api/v1/photos/google/unlink', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        credentials: 'include'
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert('구글 포토 연동이 해제되었습니다.');
+                        location.reload(); // 페이지 새로고침
+                    } else {
+                        alert(data.message || '연동 해제에 실패했습니다.');
+                        this.disabled = false;
+                        this.textContent = '연동 해제';
+                    }
+                } catch (error) {
+                    console.error('Unlink error:', error);
+                    alert('연동 해제 중 오류가 발생했습니다.');
+                    this.disabled = false;
+                    this.textContent = '연동 해제';
+                }
+            });
+        }
+
+        // CSRF 토큰 가져오기 헬퍼 함수
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
     });
 </script>
 {% endblock %}
