@@ -1,0 +1,33 @@
+{
+  "full_text": "<솔이집 이용사항>\n•이곳은 상업적인 공간이므로\n입구를 막고 사진촬영은\n금지합니다.\n•또한, 주민들이 살고있는 공간이\n므로 야간촬영 및 소음 및 고향을\n자제 부탁드립니다.\n• this is a commercial\nspace, Taking pictures while\nblocking the entrance is\nprohibited.\n• This is a space where\nresidents live, so please\nrefrain from taking photos\nat night, making noise, or\nyelling\nCCTV녹화중\nSANTAGE\nSHOP\nAnen\n찍어\n♥지우지 마세요\nictures\noutside\nperimano nail\nperimano nail",
+  "lines": [
+    "< 솔이 집 이용 사항 >",
+    "• 이곳 은 상업적인 공간 이므로 입구 를 막고 사진 촬영 은 금지 합니다 .",
+    "• 또한 , 주민들 이 살고 있는 공간 이 므로 야간 촬영 및 소음 및 고향 을 자제 부탁 드립니다 . • this is a commercial space , Taking pictures while blocking the entrance is",
+    "prohibited .",
+    "• This is a space where residents live , so please refrain from taking photos at night , making noise , or yelling",
+    "CCTV 녹화 중",
+    "SANTAGE",
+    "SHOP",
+    "Anen",
+    "찍어",
+    "♥ 지우지 마세요 ictures outside",
+    "perimano nail",
+    "perimano nail"
+  ],
+  "confidences": [
+    0.8716532588005066,
+    0.92430180311203,
+    0.9842334389686584,
+    0.9968196153640747,
+    0.9933414459228516,
+    0.6871209144592285,
+    0.6950989365577698,
+    0.9940065741539001,
+    0.9769219756126404,
+    0.9251641631126404,
+    0.7845815420150757,
+    0.9587271809577942,
+    0.9306995868682861
+  ]
+}
