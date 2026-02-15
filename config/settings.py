@@ -64,6 +64,9 @@ INSTALLED_APPS = [
     'photos',
     'classification',
     'gallery',
+
+    #kakao-login
+    'allauth.socialaccount.providers.kakao',
 ]
 
 SITE_ID = 1
@@ -196,7 +199,20 @@ SOCIALACCOUNT_PROVIDERS = {
             "key": "",
         },
         "SCOPE": ["profile", "email"],
-    }
+    },
+
+    "kakao": {
+        "SCOPE": [
+            "profile_nickname",
+            "profile_image",
+            "account_email",
+        ],
+        "APP": {
+            "client_id": os.getenv("KAKAO_CLIENT_ID", ""),
+            "secret": os.getenv("KAKAO_CLIENT_SECRET", ""),
+            "key": "",
+        },
+    },
 }
 
 # Celery 설정
@@ -208,3 +224,17 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Asia/Seoul'
 
 SOCIALACCOUNT_LOGIN_ON_GET = True
+ACCOUNT_LOGOUT_ON_GET = True
+
+#에러 로그 테스트용
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "loggers": {
+        "allauth": {"handlers": ["console"], "level": "DEBUG"},
+        "django.request": {"handlers": ["console"], "level": "INFO"},
+    },
+}
+
+SOCIALACCOUNT_ADAPTER = "config.adapters.SocialAccountAdapter"
