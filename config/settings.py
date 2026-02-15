@@ -34,7 +34,7 @@ if not SECRET_KEY:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
 
 # Application definition
@@ -287,3 +287,13 @@ ACCOUNT_ADAPTER = "accounts.adapters.AccountAdapter"
 
 # allauth: 비밀번호 변경 성공 후 이동
 ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL = "/accounts/mypage/"
+
+SESSION_COOKIE_DOMAIN = None
+CSRF_COOKIE_DOMAIN = None
+
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "/gallery/"
+LOGOUT_REDIRECT_URL = "/accounts/login/"

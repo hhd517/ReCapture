@@ -61,17 +61,17 @@
         {% if is_bookmarked %}<input type="hidden" name="bookmarked" value="true">{% endif %}
     </form>
     
-    <button class="btn-action btn-dnd" id="openDragDropBtn" onclick="openDragDropUpload()" title="드래그앤드롭 업로드">
+    <button class="btn-action btn-dnd" id="openDragDropBtn" onclick="openDragDropUpload()" title="사진 업로드">
         <i class="fa-solid fa-images"></i>
     </button>        
-    <button class="btn-action btn-camera" onclick="document.getElementById('cameraInput').click()">
+    <button class="btn-action btn-camera" onclick="document.getElementById('cameraInput').click()" title="사진 촬영하기">
         <i class="fa-solid fa-camera"></i>
     </button>
 
     <input type="file" id="fileInput" multiple accept="image/*" style="display: none;" onchange="uploadPhotos(event)">
     <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="uploadPhotos(event)">
 
-    <button class="btn-action btn-google" id="googlePhotosBtn" onclick="importGooglePhotos()">
+    <button class="btn-action btn-google" id="googlePhotosBtn" onclick="importGooglePhotos()" title="googlephoto 연동하기">
         <i class="fa-brands fa-google"></i>
     </button>
 
@@ -126,7 +126,7 @@
 
 {% if current_category and current_category_name != '분류 전' %}
 <div class="sub-filter-bar pc-only" style="background: #ffffff; padding: 15px 25px; border-radius: 15px; border: 1px solid #eee; margin-bottom: 20px; display: flex; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02); flex-wrap: wrap; gap: 8px;">
-    <span style="margin-right: 10px; color: #555; font-weight: 600;">📁 세부 폴더:</span>
+    <span style="margin-right: 10px; color: #555; font-weight: 600;">📁 세부 폴더</span>
     
     <a href="?category_id={{ current_category }}{% if is_bookmarked %}&bookmarked=true{% endif %}"
        class="filter-link {% if not current_sub_category %}active{% endif %}" 

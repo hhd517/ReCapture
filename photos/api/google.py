@@ -1,4 +1,5 @@
 # photos/api/google.py
+from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import redirect
 from rest_framework.permissions import AllowAny
@@ -45,7 +46,7 @@ def google_authorize(request):
     try:
         redirect_uri = os.getenv(
             'GOOGLE_PHOTOS_REDIRECT_URI',
-            'http://localhost:8000/api/v1/photos/google/callback/'
+            'http://127.0.0.1:8000/api/v1/photos/google/callback/'
         )
 
         auth_url, state = GooglePhotosService.get_authorization_url(redirect_uri)
@@ -71,66 +72,69 @@ def google_authorize(request):
 @permission_classes([AllowAny])
 def google_callback(request):
     """구글 OAuth 콜백 처리"""
-    if request.method == 'GET':
-        code = request.GET.get('code')
-        if not code:
-            return redirect('/gallery/?error=no_code')
+    if request.method != 'GET':
+        return redirect('/gallery/?error=invalid_method')
 
-        user_id = request.session.get('google_oauth_user_id')
-        if not user_id:
-            if request.user.is_authenticated:
-                user_id = request.user.id
-            else:
-                return redirect('/accounts/login/?next=/gallery/')
+    code = request.GET.get('code')
+    state = request.GET.get('state')
+    if not code:
+        return redirect('/gallery/?error=no_code')
 
-        from django.contrib.auth.models import User
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return redirect('/accounts/login/?next=/gallery/')
+    # ✅ state 검증(세션이 살아있을 때만 유효)
+    saved_state = request.session.get('google_oauth_state')
+    if saved_state and state and saved_state != state:
+        return redirect('/gallery/?error=state_mismatch')
 
-        redirect_uri = os.getenv(
-            'GOOGLE_PHOTOS_REDIRECT_URI',
-            'http://localhost:8000/api/v1/photos/google/callback/'
+    # ✅ authorize 때 사용한 redirect_uri와 동일하게 고정
+    redirect_uri = os.getenv(
+        'GOOGLE_PHOTOS_REDIRECT_URI',
+        'http://127.0.0.1:8000/api/v1/photos/google/callback/'
+    )
+
+    user_id = request.session.get('google_oauth_user_id')
+
+    # ✅ 세션이 끊겼다면(=host 불일치) 여기서 로그인으로 튕기게 됨
+    # -> 이걸 막는 핵심은 "콜백이 반드시 127로 오게" 하는 것.
+    if not user_id:
+        return redirect('/accounts/login/?next=/gallery/')
+
+    from django.contrib.auth.models import User
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return redirect('/accounts/login/?next=/gallery/')
+
+    try:
+        token_data = GooglePhotosService.exchange_code_for_tokens(code, redirect_uri)
+
+        existing = GoogleCredential.objects.filter(user=user).first()
+        new_refresh = token_data.get('refresh_token') or (existing.refresh_token if existing else "")
+
+        GoogleCredential.objects.update_or_create(
+            user=user,
+            defaults={
+                'google_email': token_data.get('google_email') or (existing.google_email if existing else ""),
+                'access_token': token_data.get('access_token') or (existing.access_token if existing else ""),
+                'refresh_token': new_refresh,
+                'token_uri': token_data.get('token_uri') or (existing.token_uri if existing else "https://oauth2.googleapis.com/token"),
+                'client_id': token_data.get('client_id') or (existing.client_id if existing else ""),
+                'client_secret': token_data.get('client_secret') or (existing.client_secret if existing else ""),
+                'scopes': token_data.get('scopes') or (existing.scopes if existing else []),
+                'is_active': True
+            }
         )
 
-        try:
-            token_data = GooglePhotosService.exchange_code_for_tokens(code, redirect_uri)
+        request.session.pop('google_oauth_user_id', None)
+        request.session.pop('google_oauth_state', None)
 
-            # ✅ 기존 credential이 있으면 먼저 가져와서 refresh_token을 보존
-            existing = GoogleCredential.objects.filter(user=user).first()
+        return redirect('/gallery/?google_connected=true')
 
-            new_refresh = token_data.get('refresh_token')
-            if not new_refresh:
-                # refresh_token이 안 내려오면 기존값 유지(없으면 빈 문자열로라도 유지)
-                new_refresh = existing.refresh_token if existing else ""
-
-            google_cred, created = GoogleCredential.objects.update_or_create(
-                user=user,
-                defaults={
-                    'google_email': token_data.get('google_email') or (existing.google_email if existing else ""),
-                    'access_token': token_data.get('access_token') or (existing.access_token if existing else ""),
-                    'refresh_token': new_refresh,
-                    'token_uri': token_data.get('token_uri') or (existing.token_uri if existing else "https://oauth2.googleapis.com/token"),
-                    'client_id': token_data.get('client_id') or (existing.client_id if existing else ""),
-                    'client_secret': token_data.get('client_secret') or (existing.client_secret if existing else ""),
-                    'scopes': token_data.get('scopes') or (existing.scopes if existing else []),
-                    'is_active': True
-                }
-            )
-
-            # 세션 정리
-            request.session.pop('google_oauth_user_id', None)
-            request.session.pop('google_oauth_state', None)
-
-            return redirect('/gallery/?google_connected=true')
-
-        except Exception as e:
-            print(f"Google callback error: {e}")
-            import traceback
-            traceback.print_exc()
-            return redirect('/gallery/?error=google_auth_failed')
-
+    except Exception as e:
+        print(f"Google callback error: {e}")
+        import traceback
+        traceback.print_exc()
+        return redirect('/gallery/?error=google_auth_failed')
+    
 
 @api_view(['POST'])
 @authentication_classes([CsrfExemptSessionAuthentication])

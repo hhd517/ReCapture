@@ -43,7 +43,6 @@ function saveMemo(photoId, csrfToken) {
     })
     .then(res => res.json())
     .then(data => {
-        if(data.success) alert('메모가 저장되었습니다!');
     });
 }
 
