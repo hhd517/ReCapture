@@ -533,28 +533,7 @@ async function uploadPhotos(event) {
     }
 }
 
-async function classifyPhotos() {
-    if (!confirm("미분류(분류 전) 사진을 분류할까요?")) return;
 
-    const res = await fetch(`${API_BASE}/classify`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": CSRF_TOKEN,
-        },
-        credentials: "same-origin",
-        body: JSON.stringify({ limit: 200 }),
-    });
-
-    const data = await res.json();
-
-    if (data.success) {
-        alert(`✅ 분류 완료: ${data.data.ok}개 (실패: ${data.data.fail}개)`);
-        location.reload();
-    } else {
-        alert("❌ 분류 실패: " + (data.message || "unknown error"));
-    }
-}
 
 function openDragDropUpload() {
   document.getElementById('dndUploadModal').style.display = 'block';

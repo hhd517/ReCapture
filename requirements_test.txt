@@ -21,6 +21,7 @@ billiard==4.2.4
 kombu==5.6.2
 vine==5.1.0
 async-timeout==5.0.1
+django-redis==5.4.0
 
 # =========================
 # Google Auth / Photos / Picker (OAuth + API client)
