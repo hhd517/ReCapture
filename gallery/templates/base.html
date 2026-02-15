@@ -13,11 +13,16 @@
     <header>
         <div class="header-left">
             {% block sidebar_toggle %}
-                
             {% endblock sidebar_toggle %}
-            <h1><a href="/">Re:Capture</a></h1>
+
+            <h1>
+                <a href="/" style="display:flex; align-items:center; gap:4px;">
+                    <img src="{% static 'recapture_logo.png' %}" alt="Re:Capture" style="height:44px; width:auto;">
+                    Re:Capture
+                </a>
+            </h1>
         </div>
-        
+
         <div class="header-right">
             {% if user.is_authenticated %}
                 <nav>
@@ -36,7 +41,7 @@
                                 <span id="noti-count">{{ unread_notifications_count }}</span>
                             {% endif %}
                         </button>
-                        
+
                         <div class="dropdown-content">
                             {% for noti in latest_notifications %}
                                 <div class="noti-item {% if not noti.is_read %}unread{% endif %}">
@@ -49,10 +54,9 @@
                         </div>
                     </div>
                 </nav>
-                
             {% else %}
                 <nav>
-                    <a href="{% provider_login_url 'google' process='login' %}" class="btn-login">구글 로그인</a>
+                    <a href="{% provider_login_url 'google' process='login' %}" class="btn-login"></a>
                 </nav>
             {% endif %}
         </div>

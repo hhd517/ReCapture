@@ -64,6 +64,11 @@ INSTALLED_APPS = [
     'photos',
     'classification',
     'gallery',
+
+    #kakao-login
+    'allauth.socialaccount.providers.kakao',
+    #naver-login
+    'allauth.socialaccount.providers.naver', 
 ]
 
 SITE_ID = 1
@@ -153,6 +158,10 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
+
 STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
@@ -196,7 +205,30 @@ SOCIALACCOUNT_PROVIDERS = {
             "key": "",
         },
         "SCOPE": ["profile", "email"],
-    }
+    },
+
+    "kakao": {
+        "SCOPE": [
+            "profile_nickname",
+            "profile_image",
+            "account_email",
+        ],
+        "APP": {
+            "client_id": os.getenv("KAKAO_CLIENT_ID", ""),
+            "secret": os.getenv("KAKAO_CLIENT_SECRET", ""),
+            "key": "",
+        },
+    },
+
+    "naver": {
+        "APP": {
+            "client_id": os.getenv("NAVER_CLIENT_ID", ""),
+            "secret": os.getenv("NAVER_CLIENT_SECRET", ""),
+            "key": "",
+        },
+        # 네이버에서 받길 원하는 값(동의 화면에 영향)
+        "SCOPE": ["email", "name"],
+    },    
 }
 
 # Celery 설정
@@ -208,3 +240,32 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Asia/Seoul'
 
 SOCIALACCOUNT_LOGIN_ON_GET = True
+ACCOUNT_LOGOUT_ON_GET = True
+
+#에러 로그 테스트용
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "loggers": {
+        "allauth": {"handlers": ["console"], "level": "DEBUG"},
+        "django.request": {"handlers": ["console"], "level": "INFO"},
+    },
+}
+
+SOCIALACCOUNT_ADAPTER = "config.adapters.SocialAccountAdapter"
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+
+# ✅ 소셜 로그인은 추가 입력 없이 자동 회원가입 처리
+SOCIALACCOUNT_AUTO_SIGNUP = True
+
+# ✅ 이메일은 소셜에서 받아오므로, 가입 폼을 띄우지 않도록
+SOCIALACCOUNT_EMAIL_REQUIRED = False
+
+# (선택) 이메일 중복이 있으면 기존 계정에 자동 연결도 도와줌
+ACCOUNT_UNIQUE_EMAIL = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True

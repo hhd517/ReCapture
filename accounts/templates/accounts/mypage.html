@@ -9,6 +9,7 @@
         <div class="avatar-circle">
             {{ user.username|slice:":1"|upper }}
         </div>
+        <h2>마이페이지</h2>
     </div>
 
     <div class="user-info-list">
@@ -28,7 +29,9 @@
 
     <div style="padding: 15px 0; display: flex; justify-content: space-between; align-items: center;">
         <span style="color: #ff4757;">로그아웃</span>
-        <a href="{% url 'account_logout' %}"><i class="fa-solid fa-right-from-bracket" style="color: #ff4757;"></i></a>
+        <a href="{% url 'account_logout' %}">
+            <i class="fa-solid fa-right-from-bracket" style="color: #ff4757;"></i>
+        </a>
     </div>
 </div>
 {% endblock %}

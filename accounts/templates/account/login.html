@@ -9,8 +9,19 @@
         <p class="login-subtitle">Re:Capture에 오신 것을 환영합니다!</p>
 
         <div class="social-login">
-            <a href="{% provider_login_url 'google' process='login' %}" class="btn-google-login">
+            <!-- Google -->
+            <a href="{% provider_login_url 'google' process='login' %}" class="btn-social-login btn-google-login">
                 <i class="fa-brands fa-google"></i> Google로 시작하기
+            </a>
+
+            <!-- Kakao -->
+            <a href="{% provider_login_url 'kakao' process='login' %}" class="btn-social-login btn-kakao-login">
+                <i class="fa-solid fa-comment"></i> Kakao로 시작하기
+            </a>
+
+            <!-- ✅ Naver -->
+            <a href="{% provider_login_url 'naver' process='login' %}" class="btn-social-login btn-naver-login">
+                <i class="fa-solid fa-n"></i> Naver로 시작하기
             </a>
         </div>
 
@@ -50,7 +61,8 @@
         font-size: 14px;
     }
 
-    .btn-google-login {
+    /* ✅ 공통 버튼 스타일 (구글/카카오/네이버 통일) */
+    .btn-social-login {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -63,17 +75,54 @@
         font-weight: 600;
         transition: all 0.2s;
         text-decoration: none;
+        width: 100%;
     }
 
-    .btn-google-login:hover {
+    /* 버튼 간격 */
+    .social-login {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .btn-social-login:hover {
         background-color: #f8f9fa;
         transform: translateY(-2px);
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
     }
 
+    .btn-social-login i {
+        font-size: 18px;
+    }
+
+    /* Google 아이콘 컬러 */
     .btn-google-login i {
         color: #4285f4;
-        font-size: 18px;
+    }
+
+    /* Kakao 스타일 */
+    .btn-kakao-login {
+
+    }
+    .btn-kakao-login i {
+        color: #191919;
+    }
+    .btn-kakao-login:hover {
+        background-color: #FFF9CC;
+        border-color: #FEE500;
+    }
+
+    /* ✅ Naver 스타일 (톤 유지: 흰 배경 + 초록 포인트) */
+    .btn-naver-login {
+
+    }
+    .btn-naver-login i {
+        color: #03C75A;
+        font-weight: 900;
+    }
+    .btn-naver-login:hover {
+        background-color: #EAFBF1; /* 초록 아주 연하게 */
+        border-color: #03C75A;
     }
 
     .login-footer {
