@@ -26,7 +26,7 @@ def google_status(request):
     """구글 포토 연동 상태 확인"""
     user = request.user
     try:
-        google_cred = GoogleCredential.objects.get(user=user, is_active=True)
+        google_cred = GoogleCredential.objects.get(user=user)
         response_data = APIResponse.success({
             "connected": True,
             "googleEmail": google_cred.google_email
@@ -136,13 +136,16 @@ def google_callback(request):
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def google_unlink(request):
-    """구글 포토 연동 해제"""
+    """구글 포토 연동 해제 - 완전 삭제"""
     user = request.user
     try:
         google_cred = GoogleCredential.objects.get(user=user)
-        google_cred.is_active = False
-        google_cred.save(update_fields=["is_active"])
-        response_data = APIResponse.success({"unlinked": True})
+        google_cred.delete()
+        
+        response_data = APIResponse.success({
+            "unlinked": True,
+            "message": "구글 포토 연동이 해제되었습니다. 다른 계정으로 재연동할 수 있습니다."
+        })
         return Response(response_data, status=status.HTTP_200_OK)
 
     except GoogleCredential.DoesNotExist:

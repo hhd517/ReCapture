@@ -1,19 +1,40 @@
 {% extends 'base.html' %}
 {% load static %}
+{% block sidebar_toggle %}{% endblock sidebar_toggle %}
 
 {% block content %}
-<link rel="stylesheet" href="{% static 'css/trash_list.css' %}">
+<link rel="stylesheet" href="{% static 'css/gallery.css' %}"> <link rel="stylesheet" href="{% static 'css/trash_list.css' %}">
 
-<div class="trash-header">
-    <h2>🗑️ 휴지통</h2>
-    <p class="trash-info">휴지통에 있는 사진은 30일 뒤에 영구 삭제됩니다.</p>
-    <a href="{% url 'gallery:photo_list' %}" class="back-link">← 갤러리로 돌아가기</a>
+<div class="trash-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+    <div>
+        <h2 style="font-weight: 800; margin-bottom: 5px;">🗑️ 휴지통</h2>
+        <a href="{% url 'gallery:photo_list' %}" class="back-link" style="text-decoration: none; color: #666; font-size: 14px;">← 갤러리로 돌아가기</a>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px;">
+        {% if photos %}
+        <button onclick="emptyTrashAll()" class="btn-action" style="background: #fff; color: #ff4757; border: 1px solid #ff4757; width: auto; height: 45px; padding: 0 18px; border-radius: 22px; font-weight: 600; cursor: pointer; transition: 0.2s;">
+            <i class="fa-solid fa-trash-can-arrow-up" style="margin-right: 6px;"></i> 전체 비우기
+        </button>
+        {% endif %}
+
+        <button class="btn-action" id="trashEditBtn" style="background: #666; color: white; width: 45px; height: 45px; border-radius: 50%; border: none; cursor: pointer;">
+            <i class="fa-solid fa-ellipsis-vertical"></i>
+        </button>
+    </div>
 </div>
 
 <div class="trash-grid">
     {% for photo in photos %}
-        <div class="trash-card">
+        <div class="trash-card photo-card" data-photo-id="{{ photo.id }}" style="position: relative;">
+            
+            <div class="edit-checkbox-wrapper" style="display: none; position: absolute; top: 10px; right: 10px; z-index: 15;">
+                <input type="checkbox" class="photo-select-checkbox" value="{{ photo.id }}" 
+                       style="width: 22px; height: 22px; cursor: pointer; accent-color: #007bff; margin: 0;">
+            </div>
+
             <img src="{{ photo.image.url }}" class="trash-img" alt="삭제 대기 중인 사진">
+            
             <div class="trash-btns">
                 <button class="btn-trash-action btn-restore" onclick="restorePhoto({{ photo.id }}, '{{ csrf_token }}')">
                     복구
@@ -30,5 +51,34 @@
     {% endfor %}
 </div>
 
+<div id="trashControlBar" class="move-control-bar" style="display: none;">
+    <div class="move-info">
+        <span class="count-badge" id="selectedCount">0</span>
+        <span class="count-text">장 선택됨</span>
+    </div>
+
+    <div class="move-actions">
+        <div class="button-group" style="display: flex; gap: 8px; align-items: center;">
+            <button onclick="bulkRestore()" 
+                    style="background-color: #2ecc71; color: white; border: none; padding: 10px 18px; border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 10px rgba(46, 204, 113, 0.2);">
+                선택 복구
+            </button>
+
+            <button onclick="bulkPermanentDelete()" 
+                    style="background-color: #ff4757; color: white; border: none; padding: 10px 18px; border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 10px rgba(255, 71, 87, 0.2);">
+                영구 삭제
+            </button>
+
+            <button onclick="exitTrashEdit()" 
+                    style="background-color: #f1f1f1; color: #666; border: none; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const CSRF_TOKEN = "{{ csrf_token }}";
+</script>
 <script src="{% static 'js/trash_list.js' %}"></script>
 {% endblock %}
