@@ -12,6 +12,7 @@
         <h2>마이페이지</h2>
     </div>
 
+
     <div class="user-info-list">
         <div class="info-row">
             <span class="info-label">이름</span>
@@ -27,11 +28,53 @@
         </div>
     </div>
 
-    <div style="padding: 15px 0; display: flex; justify-content: space-between; align-items: center;">
-        <span style="color: #ff4757;">로그아웃</span>
-        <a href="{% url 'account_logout' %}">
-            <i class="fa-solid fa-right-from-bracket" style="color: #ff4757;"></i>
-        </a>
-    </div>
+    {% if user.has_usable_password %}
+  <div style="padding: 12px 0;">
+      <a href="{% url 'accounts:profile_edit' %}" class="btn-edit-profile">회원정보 수정</a>
+  </div>
+{% endif %}
+
+<div class="logout-row">
+  <a class="logout-link" href="{% url 'account_logout' %}">
+    <span>로그아웃</span>
+    <i class="fa-solid fa-right-from-bracket"></i>
+  </a>
 </div>
+</div>
+
+<style>
+  .btn-edit-profile{
+    display:block;
+    width:100%;
+    text-align:center;
+    padding:12px;
+    background:#007bff;
+    color:#fff;
+    border-radius:12px;
+    font-weight:800;
+    text-decoration:none;
+  }
+  .btn-edit-profile:hover{ filter: brightness(.96); }
+
+ .logout-row{
+  padding: 15px 0;
+  display: flex;
+  justify-content: center;   /* ✅ 가운데 정렬 */
+  align-items: center;
+}
+
+.logout-link{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;                 /* 텍스트-아이콘 간격 */
+  color: #ff4757;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.logout-link i{
+  color: #ff4757;
+} 
+</style>
+
 {% endblock %}

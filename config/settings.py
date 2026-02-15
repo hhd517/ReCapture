@@ -284,3 +284,6 @@ ACCOUNT_LOGIN_ON_SIGNUP = False
 
 # 회원가입 완료 후 이동할 곳(로그인 화면)
 ACCOUNT_ADAPTER = "accounts.adapters.AccountAdapter"
+
+# allauth: 비밀번호 변경 성공 후 이동
+ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL = "/accounts/mypage/"
