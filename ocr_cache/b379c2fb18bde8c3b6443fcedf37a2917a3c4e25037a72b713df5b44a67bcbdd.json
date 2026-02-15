@@ -1,0 +1,37 @@
+{
+  "full_text": "PARIS SPRING\nCHESTER\nCHERLES\nsnap fitness 7\n9390 3328\n生到飛\n로프 208\nO\nOPEN 24H WORLDWIDE\nsnap fitness 24/7\n9390 3328\nGROUP CLASS\nsnap fitness 24/7\nOPEN\nLAU HON\n****\nLUNG SHING MEDIC",
+  "lines": [
+    "PARIS SPRING",
+    "CHESTER CHERLES",
+    "snap fitness 7",
+    "9390 3328",
+    "生 到 飛",
+    "로프 208",
+    "O",
+    "OPEN 24H WORLDWIDE",
+    "snap fitness 24/7",
+    "9390 3328",
+    "GROUP CLASS",
+    "snap fitness 24/7",
+    "OPEN",
+    "LAU HON",
+    "**** LUNG SHING MEDIC"
+  ],
+  "confidences": [
+    0.9754166007041931,
+    0.766828179359436,
+    0.9247943162918091,
+    0.9909447431564331,
+    0.7691006660461426,
+    0.7234845161437988,
+    0.7276504039764404,
+    0.9502322673797607,
+    0.9433125853538513,
+    0.9863008260726929,
+    0.9894267916679382,
+    0.9486573934555054,
+    0.9927340149879456,
+    0.7083208560943604,
+    0.8366521596908569
+  ]
+}

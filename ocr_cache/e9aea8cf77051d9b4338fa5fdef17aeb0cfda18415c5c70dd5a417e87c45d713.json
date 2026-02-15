@@ -1,0 +1,23 @@
+{
+  "full_text": "4\nphotoi\n49\nPHOTOISM\nKEEP YOURSELF ALIVE\n50\nPHOTOISM\nKEEP YOURSELF ALIVE",
+  "lines": [
+    "4",
+    "photoi",
+    "49",
+    "PHOTOISM",
+    "KEEP YOURSELF ALIVE",
+    "50",
+    "PHOTOISM",
+    "KEEP YOURSELF ALIVE"
+  ],
+  "confidences": [
+    0.7953782081604004,
+    0.9728179574012756,
+    0.99233478307724,
+    0.9825769662857056,
+    0.9842173457145691,
+    0.9819056987762451,
+    0.9862294793128967,
+    0.9787002205848694
+  ]
+}
