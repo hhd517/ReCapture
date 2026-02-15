@@ -11,7 +11,12 @@
 </head>
 <body>
     <header>
-        <h1><a href="/">Re:Capture</a></h1>
+        <h1>
+            <a href="/" style="display:flex; align-items:center; gap:1px;">
+                <img src="{% static 'recapture_logo.png' %}" alt="Re:Capture" style="height: 70px; width:auto;">
+                Re:Capture
+            </a>
+        </h1>
         
         <div style="display: flex; align-items: center;">
             {% if user.is_authenticated %}
@@ -39,7 +44,7 @@
                 </div>
             {% else %}
                 <nav>
-                    <a href="{% provider_login_url 'google' process='login' %}" class="btn-login">구글 로그인</a>
+                    <a href="{% provider_login_url 'google' process='login' %}" class="btn-login"></a>
                 </nav>
             {% endif %}
         </div>
