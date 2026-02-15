@@ -16,7 +16,12 @@
 
             <!-- Kakao -->
             <a href="{% provider_login_url 'kakao' process='login' %}" class="btn-social-login btn-kakao-login">
-                <i class="fa-solid fa-comment"></i> 카카오로 시작하기
+                <i class="fa-solid fa-comment"></i> Kakao로 시작하기
+            </a>
+
+            <!-- ✅ Naver -->
+            <a href="{% provider_login_url 'naver' process='login' %}" class="btn-social-login btn-naver-login">
+                <i class="fa-solid fa-n"></i> Naver로 시작하기
             </a>
         </div>
 
@@ -56,7 +61,7 @@
         font-size: 14px;
     }
 
-    /* ✅ 공통 버튼 스타일 (구글/카카오 같은 느낌으로) */
+    /* ✅ 공통 버튼 스타일 (구글/카카오/네이버 통일) */
     .btn-social-login {
         display: flex;
         align-items: center;
@@ -95,16 +100,29 @@
         color: #4285f4;
     }
 
-    /* Kakao 스타일 (카카오 느낌만 살짝) */
+    /* Kakao 스타일 */
     .btn-kakao-login {
-        border-color: #FEE500;
+
     }
     .btn-kakao-login i {
-        color: #191919; /* 카카오 말풍선 느낌 */
+        color: #191919;
     }
     .btn-kakao-login:hover {
-        background-color: #FFF9CC; /* 살짝 노란 느낌 */
+        background-color: #FFF9CC;
         border-color: #FEE500;
+    }
+
+    /* ✅ Naver 스타일 (톤 유지: 흰 배경 + 초록 포인트) */
+    .btn-naver-login {
+
+    }
+    .btn-naver-login i {
+        color: #03C75A;
+        font-weight: 900;
+    }
+    .btn-naver-login:hover {
+        background-color: #EAFBF1; /* 초록 아주 연하게 */
+        border-color: #03C75A;
     }
 
     .login-footer {

@@ -67,6 +67,8 @@ INSTALLED_APPS = [
 
     #kakao-login
     'allauth.socialaccount.providers.kakao',
+    #naver-login
+    'allauth.socialaccount.providers.naver', 
 ]
 
 SITE_ID = 1
@@ -213,6 +215,16 @@ SOCIALACCOUNT_PROVIDERS = {
             "key": "",
         },
     },
+
+    "naver": {
+        "APP": {
+            "client_id": os.getenv("NAVER_CLIENT_ID", ""),
+            "secret": os.getenv("NAVER_CLIENT_SECRET", ""),
+            "key": "",
+        },
+        # 네이버에서 받길 원하는 값(동의 화면에 영향)
+        "SCOPE": ["email", "name"],
+    },    
 }
 
 # Celery 설정
@@ -238,3 +250,18 @@ LOGGING = {
 }
 
 SOCIALACCOUNT_ADAPTER = "config.adapters.SocialAccountAdapter"
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+
+# ✅ 소셜 로그인은 추가 입력 없이 자동 회원가입 처리
+SOCIALACCOUNT_AUTO_SIGNUP = True
+
+# ✅ 이메일은 소셜에서 받아오므로, 가입 폼을 띄우지 않도록
+SOCIALACCOUNT_EMAIL_REQUIRED = False
+
+# (선택) 이메일 중복이 있으면 기존 계정에 자동 연결도 도와줌
+ACCOUNT_UNIQUE_EMAIL = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
