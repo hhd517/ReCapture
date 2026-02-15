@@ -1,0 +1,35 @@
+{
+  "full_text": "Er\nREL\n出入\nFrozen Ever After\nRETURN CARD\n02\nE\nValid today for one\ntime use at Frozen\nEver After\nPlease present this\nthe Cast M\n(Member\nFrozen Eyer\nter entrance,\n• Valid for one person\nonly\nDisneyLe\nAND\nSALE NON-REFUNDABLE NON TRANSFERABLE",
+  "lines": [
+    "Er",
+    "REL",
+    "出入",
+    "Frozen Ever After RETURN CARD",
+    "02",
+    "E",
+    "Valid today for one time use at Frozen Ever After Please present this the Cast M",
+    "( Member",
+    "Frozen Eyer",
+    "ter entrance ,",
+    "• Valid for one person only",
+    "DisneyLe",
+    "AND",
+    "SALE NON - REFUNDABLE NON TRANSFERABLE"
+  ],
+  "confidences": [
+    0.621517539024353,
+    0.9636688828468323,
+    0.6564092636108398,
+    0.992073655128479,
+    0.5039756298065186,
+    0.4650889039039612,
+    0.9412769675254822,
+    0.9596753120422363,
+    0.918472945690155,
+    0.8398804664611816,
+    0.9092050194740295,
+    0.5765994191169739,
+    0.6926503777503967,
+    0.9290938377380371
+  ]
+}
