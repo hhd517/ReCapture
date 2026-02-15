@@ -254,10 +254,12 @@ LOGGING = {
 }
 
 SOCIALACCOUNT_ADAPTER = "config.adapters.SocialAccountAdapter"
-ACCOUNT_USER_MODEL_USERNAME_FIELD = None
-ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"
+
+ACCOUNT_AUTHENTICATION_METHOD = "username_email"
+
+ACCOUNT_USERNAME_REQUIRED = True
 ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = False
 
 # ✅ 소셜 로그인은 추가 입력 없이 자동 회원가입 처리
 SOCIALACCOUNT_AUTO_SIGNUP = True
@@ -269,3 +271,16 @@ SOCIALACCOUNT_EMAIL_REQUIRED = False
 ACCOUNT_UNIQUE_EMAIL = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+
+ACCOUNT_LOGOUT_REDIRECT_URL = "/"   # 또는 "/accounts/login/"
+# 또는 Django 기본:
+LOGOUT_REDIRECT_URL = "/"
+# 개발환경: 이메일 전송 대신 콘솔에 출력
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "no-reply@recapture.local"
+
+# 회원가입 후 자동 로그인 하지 않음
+ACCOUNT_LOGIN_ON_SIGNUP = False
+
+# 회원가입 완료 후 이동할 곳(로그인 화면)
+ACCOUNT_ADAPTER = "accounts.adapters.AccountAdapter"

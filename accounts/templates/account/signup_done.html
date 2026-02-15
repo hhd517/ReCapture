@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="done-wrap">
+  <div class="done-card">
+    <h2>회원가입이 완료되었습니다! 🎉</h2>
+    <p>이제 로그인해서 Re:Capture를 시작해볼까요?</p>
+
+    <a class="done-btn" href="/accounts/login/">로그인 페이지로 이동</a>
+
+    <div class="done-sub">
+      <span id="sec">3</span>초 후 자동으로 로그인 페이지로 이동합니다.
+    </div>
+  </div>
+</div>
+
+<style>
+  .done-wrap{
+    min-height: calc(100vh - 200px);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .done-card{
+    width:100%; max-width:420px;
+    background:#fff; border-radius:20px;
+    padding:42px 38px;
+    text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,0.08);
+  }
+  .done-card h2{ font-weight:900; margin:0 0 12px; color:#222; }
+  .done-card p{ margin:0 0 24px; color:#777; font-size:14px; }
+  .done-btn{
+    display:block; width:100%;
+    padding:12px;
+    background:#007bff; color:#fff;
+    border-radius:12px;
+    font-weight:800; text-decoration:none;
+  }
+  .done-btn:hover{ filter:brightness(.96); }
+  .done-sub{
+    margin-top:14px;
+    font-size:12px;
+    color:#9aa0a6;
+  }
+</style>
+
+<script>
+  let s = 3;
+  const el = document.getElementById("sec");
+  const timer = setInterval(() => {
+    s -= 1;
+    el.textContent = String(s);
+    if (s <= 0) {
+      clearInterval(timer);
+      window.location.href = "/accounts/login/";
+    }
+  }, 1000);
+</script>
+{% endblock %}

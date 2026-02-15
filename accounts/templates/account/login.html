@@ -19,14 +19,76 @@
                 <i class="fa-solid fa-comment"></i> Kakao로 시작하기
             </a>
 
-            <!-- ✅ Naver -->
+            <!-- Naver -->
             <a href="{% provider_login_url 'naver' process='login' %}" class="btn-social-login btn-naver-login">
                 <i class="fa-solid fa-n"></i> Naver로 시작하기
             </a>
         </div>
 
+        <!-- ✅ 구분선 -->
+        <div class="login-divider">
+            <span>또는</span>
+        </div>
+
+        <!-- ✅ 폼 전체 에러(아이디/비번 틀림 등) -->
+        {% if form.non_field_errors %}
+            <div class="flash flash-error">
+                {% for err in form.non_field_errors %}
+                    <div>{{ err }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- ✅ 일반 로그인 폼 (allauth 기본 form 사용) -->
+        <form class="auth-form" method="post" action="{% url 'account_login' %}">
+            {% csrf_token %}
+
+            {# redirect 처리 (next) #}
+            {% if redirect_field_value %}
+                <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
+            {% endif %}
+
+            <div class="form-group {% if form.login.errors %}has-error{% endif %}">
+                <label for="{{ form.login.id_for_label }}">아이디 또는 이메일</label>
+                {{ form.login }}
+                {% if form.login.errors %}
+                    <ul class="errorlist">
+                        {% for err in form.login.errors %}
+                            <li>{{ err }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div class="form-group {% if form.password.errors %}has-error{% endif %}">
+                <label for="{{ form.password.id_for_label }}">비밀번호</label>
+                {{ form.password }}
+                {% if form.password.errors %}
+                    <ul class="errorlist">
+                        {% for err in form.password.errors %}
+                            <li>{{ err }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            {% if form.remember %}
+            <div class="form-remember">
+                <label class="remember-label">
+                    {{ form.remember }} 로그인 유지
+                </label>
+            </div>
+            {% endif %}
+
+            <button type="submit" class="btn-primary-login">일반 로그인</button>
+        </form>
+
         <div class="login-footer">
-            <p>로그인 시 서비스 이용약관에 동의하게 됩니다.</p>
+            <p style="margin-bottom: 8px;">로그인 시 서비스 이용약관에 동의하게 됩니다.</p>
+            <p>
+                아직 계정이 없나요?
+                <a href="{% url 'account_signup' %}" class="link-strong">일반 회원가입</a>
+            </p>
         </div>
     </div>
 </div>
@@ -36,7 +98,7 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        min-height: calc(100vh - 200px); /* 헤더 제외 중앙 배치 */
+        min-height: calc(100vh - 200px);
     }
 
     .login-box {
@@ -61,7 +123,12 @@
         font-size: 14px;
     }
 
-    /* ✅ 공통 버튼 스타일 (구글/카카오/네이버 통일) */
+    .social-login {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
     .btn-social-login {
         display: flex;
         align-items: center;
@@ -78,57 +145,154 @@
         width: 100%;
     }
 
-    /* 버튼 간격 */
-    .social-login {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
     .btn-social-login:hover {
         background-color: #f8f9fa;
         transform: translateY(-2px);
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
     }
 
-    .btn-social-login i {
-        font-size: 18px;
+    .btn-social-login i { font-size: 18px; }
+    .btn-google-login i { color: #4285f4; }
+
+    .btn-kakao-login i { color: #191919; }
+    .btn-kakao-login:hover { background-color: #FFF9CC; border-color: #FEE500; }
+
+    .btn-naver-login i { color: #03C75A; font-weight: 900; }
+    .btn-naver-login:hover { background-color: #EAFBF1; border-color: #03C75A; }
+
+    /* ✅ divider */
+    .login-divider {
+        margin: 22px 0;
+        position: relative;
+        border-bottom: 1px solid #eee;
+    }
+    .login-divider span {
+        position: absolute;
+        top: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: white;
+        padding: 0 15px;
+        color: #bbb;
+        font-size: 13px;
     }
 
-    /* Google 아이콘 컬러 */
-    .btn-google-login i {
-        color: #4285f4;
+    /* ✅ 일반 로그인 폼 스타일 */
+    .auth-form {
+        text-align: left;
+    }
+    .form-group {
+        margin-bottom: 14px;
+    }
+    .form-group label {
+        display: block;
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 6px;
+        font-weight: 600;
+    }
+    .auth-form input[type="text"],
+    .auth-form input[type="email"],
+    .auth-form input[type="password"] {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        outline: none;
+    }
+    .auth-form input:focus {
+        border-color: #c7d2fe;
+        box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+    }
+    .form-remember {
+        margin: 10px 0 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .remember-label {
+        font-size: 13px;
+        color: #666;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
     }
 
-    /* Kakao 스타일 */
-    .btn-kakao-login {
-
+    .btn-primary-login {
+        width: 100%;
+        padding: 12px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        margin-top: 6px;
     }
-    .btn-kakao-login i {
-        color: #191919;
-    }
-    .btn-kakao-login:hover {
-        background-color: #FFF9CC;
-        border-color: #FEE500;
-    }
-
-    /* ✅ Naver 스타일 (톤 유지: 흰 배경 + 초록 포인트) */
-    .btn-naver-login {
-
-    }
-    .btn-naver-login i {
-        color: #03C75A;
-        font-weight: 900;
-    }
-    .btn-naver-login:hover {
-        background-color: #EAFBF1; /* 초록 아주 연하게 */
-        border-color: #03C75A;
+    .btn-primary-login:hover {
+        filter: brightness(0.96);
     }
 
     .login-footer {
-        margin-top: 30px;
+        margin-top: 22px;
         font-size: 12px;
-        color: #bbb;
+        color: #999;
+        text-align: center;
+    }
+    .link-strong {
+        color: #007bff;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    /* ==========================
+       ✅ "밤티" 불릿/점 완전 제거 + 예쁜 에러 스타일
+       ========================== */
+
+    /* 폼 전체 에러 알림 */
+    .flash{
+        margin: 0 0 14px 0;
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.35;
+        text-align: left;
+    }
+    .flash-error{
+        border: 1px solid #ffd6d6;
+        background: #fff5f5;
+        color: #b42318;
+    }
+
+    /* 에러 난 필드 테두리 */
+    .has-error input{
+        border-color:#f3b4b4;
+        box-shadow:0 0 0 3px rgba(239,68,68,0.10);
+    }
+
+    /* ✅ 불릿(•) 싹 제거 */
+    .errorlist{
+        list-style: none !important;
+        padding-left: 0 !important;
+        margin: 8px 0 0 0 !important;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .errorlist li::marker { content: "" !important; }
+    .errorlist li::before { content: "" !important; }
+
+    /* 에러 문구 스타일(박스형) */
+    .errorlist li{
+        font-size:12px;
+        background:#fff5f5;
+        border:1px solid #ffd6d6;
+        color:#b42318;
+        padding:8px 10px;
+        border-radius:10px;
+        line-height:1.35;
     }
 </style>
 {% endblock %}
