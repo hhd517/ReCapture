@@ -4,6 +4,10 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import HttpResponseForbidden
 from .forms import ProfileUpdateForm
+# accounts/views.py
+from django.contrib.auth import logout
+from django.shortcuts import redirect
+from django.views.decorators.http import require_http_methods
 
 @login_required
 def mypage(request):
@@ -20,10 +24,10 @@ def mypage(request):
 
     return render(request, "accounts/mypage.html", {"user": request.user, "form": form})
 
+@require_http_methods(["GET", "POST"])
 def logout_view(request):
-    # 로그아웃 처리
-    auth_logout(request)
-    return redirect('gallery:photo_list')
+    logout(request)
+    return redirect("/") 
 
 def signup_done(request):
     # 직접 접근/새로고침 방지 (선택)

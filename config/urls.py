@@ -1,14 +1,16 @@
 from django.contrib import admin
 from django.urls import path, include
-from django.shortcuts import redirect
+from django.shortcuts import redirect,render
 from django.conf import settings
 from django.conf.urls.static import static
 
+
 def home(request):
-    # ✅ 로그인 상태면 서비스로, 아니면 로그인으로 (루프 방지)
+    # 로그인 상태면 서비스(갤러리)로
     if request.user.is_authenticated:
         return redirect('/gallery/')
-    return redirect('/accounts/login/')
+    # 비로그인 상태면 메인 랜딩 페이지 렌더
+    return render(request, "home.html")
 
 urlpatterns = [
     path('', home),

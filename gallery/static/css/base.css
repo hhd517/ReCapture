@@ -188,24 +188,55 @@ main {
 
 /* 태블릿 및 모바일 공통 (768px 이하) */
 @media (max-width: 768px) {
-    header {
-        padding: 0 20px;
-        height: auto;
-        flex-direction: row;
-        padding-bottom: 15px;
-    }
+  header {
+    padding: 0 15px;
+    height: 60px;            /* ✅ auto 금지 */
+    padding-bottom: 0;       /* ✅ 아래 padding 제거 */
+    flex-direction: row;
+  }
 
-    header h1 {
-        margin: 15px 0;
-    }
+  header h1 {
+    margin: 0;               /* ✅ 15px 마진 제거 */
+  }
 
-    nav {
-        gap: 10px;
-        flex-wrap: wrap;
-        justify-content: center;
-    }
+  nav {
+    gap: 10px;
+    flex-wrap: nowrap;       /* 필요시 */
+    justify-content: flex-end;
+  }
 
-    .user-name {
-        display: none; /* 모바일에서는 이름 생략 가능 */
-    }
+  .user-name { display: none; }
+}
+
+/* ===== Header height stable fix (global) ===== */
+header {
+  height: 60px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+header h1 {
+  margin: 0;          /* ✅ h1 기본 margin 제거 */
+  line-height: 1;
+}
+
+header h1 a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1;
+}
+
+header h1 img {
+  display: block;     /* ✅ 이미지 baseline 여백 제거 */
+  height: 30px;       /* ✅ 44px → 30px로 줄여 안정화 */
+  width: auto;
+}
+
+/* 혹시 header 내부 텍스트/아이콘 때문에 커지는 것 방지 */
+header * {
+  box-sizing: border-box;
 }

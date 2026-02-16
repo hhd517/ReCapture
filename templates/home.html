@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% load static %}
+{% load socialaccount %}
+
+{% block content %}
+<style>
+  .home-hero { padding: 48px 20px; }
+
+  .home-hero-inner{
+    max-width:1100px;
+    margin:0 auto;
+    display:flex;
+    gap:24px;
+    align-items:stretch;
+  }
+
+  /* ✅ 왼쪽 큰 박스(히어로) */
+  .home-copy{
+    flex:1.1;
+    padding:24px;
+    border-radius:16px;
+    background:#fff;
+    border:1px solid rgba(0,0,0,0.06);
+
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:18px;
+  }
+
+  .home-copy-text{
+    flex: 1;
+    min-width: 0;
+  }
+
+  .home-copy h2{
+    margin:0 0 12px;
+    font-size:32px;
+    line-height:1.2;
+  }
+
+  .home-sub{
+    margin:0 0 18px;
+    color:rgba(0,0,0,0.65);
+    font-size:15px;
+  }
+
+  .home-cta{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:8px;
+  }
+
+  .btn-primary{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    height:44px;
+    padding:0 16px;
+    border-radius:10px;
+    font-weight:600;
+    text-decoration:none;
+
+    background:#2f6df6;
+    color:#fff;
+    border:1px solid rgba(0,0,0,0.05);
+  }
+
+  /* ✅ 로고 자리(오른쪽) — “핑크 동그라미 자리”처럼 크게 */
+  .home-copy-logo{
+    flex: 0 0 240px;     /* 로고 영역 폭 (원하면 200~280 조절) */
+    height: 240px;       /* 로고 영역 높이 */
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  /* ✅ 로고 이미지를 영역 안에서 최대한 크게, 안 잘리게 */
+  .hero-logo{
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display:block;
+    opacity: 0.95;
+  }
+
+  /* 오른쪽 설명 카드들 */
+  .home-visual{
+    flex:0.9;
+    display:grid;
+    grid-template-columns:1fr;
+    gap:12px;
+  }
+
+  .home-card{
+    background:#fff;
+    border-radius:16px;
+    padding:18px;
+    border:1px solid rgba(0,0,0,0.06);
+  }
+
+  .home-card-title{
+    font-weight:700;
+    margin-bottom:6px;
+  }
+
+  .home-card-body{
+    color:rgba(0,0,0,0.65);
+    font-size:14px;
+  }
+
+  /* ✅ 반응형 */
+/* ✅ 태블릿/작은 데스크탑(900px대)에서도 '센터 정렬' 느낌으로 */
+@media (max-width: 1024px) and (min-width: 769px){
+
+  /* 전체 2컬럼은 유지하되, 왼쪽 카드 내부만 중앙 정렬 */
+  .home-copy{
+    flex-direction: column;     /* ✅ 카드 안 요소를 위->아래로 모으기 */
+    align-items: center;        /* ✅ 가로 가운데 */
+    justify-content: center;    /* ✅ 세로 가운데 */
+    text-align: center;         /* ✅ 텍스트 가운데 */
+    gap: 16px;
+    padding: 22px;
+  }
+
+  .home-copy-text{
+    width: 100%;
+  }
+
+  .home-cta{
+    justify-content: center;
+  }
+
+  /* 로고: 아래로 가긴 하지만 "애매한 큰 여백" 없이 자연스럽게 */
+  .home-copy-logo{
+    width: 100%;
+    flex: 0 0 auto;
+    justify-content: center;
+    margin-top: 6px;
+  }
+
+  /* 900px대 로고 크기: PC랑 비슷하게 */
+  .hero-logo{
+    height: 160px;   /* ✅ 여기만 취향대로 (150~180 추천) */
+    width: auto;
+  }
+}
+  /* ✅ 모바일에서는 로고를 적당히 크게 + 비율 유지 */
+  .hero-logo{
+    width: min(240px, 70vw);      /* 화면에 맞춰 자동 조절 */
+    height: auto;                /* ✅ 중요: 고정 height 제거 */
+    max-height: 240px;
+    object-fit: contain;
+  }
+
+
+  /* ✅ home.html에서만 헤더 두꺼워지는 문제 강제 해결 */
+/* ✅ 768px 이하에서 로고 튀는 현상 완전 고정 */
+@media (max-width: 768px){
+  header{
+    height: 60px !important;   /* 필요하면 56~64로 */
+    padding: 0 15px !important;
+    padding-bottom: 0 !important;
+    align-items: center !important;
+  }
+  header h1{ margin: 0 !important; line-height: 1 !important; }
+  
+
+  /* ✅ 카드 전체를 세로 컬럼 + 가운데 정렬 */
+  .home-copy{
+    flex-direction: column;
+    align-items: center;      /* ✅ 가로 가운데 */
+    text-align: center;       /* ✅ 텍스트 가운데 */
+    gap: 16px;                /* ✅ 요소 간격 */
+    padding: 22px;
+  }
+
+  /* ✅ 텍스트 영역도 가운데 정렬 유지 */
+  .home-copy-text{
+    width: 100%;
+  }
+
+  /* ✅ 버튼도 가운데로 */
+  .home-cta{
+    justify-content: center;
+  }
+
+  /* ✅ 로고 영역: 밑으로 내리되 '가운데 정렬', 애매한 분리선/여백 제거 */
+  .home-copy-logo{
+    width: 100%;
+    justify-content: center;
+    margin-top: 6px;          /* ✅ 너무 내려가서 비는 느낌 줄이기 */
+    padding-top: 0;
+    border-top: none;
+  }
+
+
+}
+</style>
+
+<section class="home-hero">
+  <div class="home-hero-inner">
+
+    <div class="home-copy">
+      <div class="home-copy-text">
+        <h2>Re:Capture</h2>
+        <p class="home-sub">
+          결제/예약 · 학습/노트 · 정보 · 기타<br>
+          분류부터 폴더 정리까지 한 번에.
+        </p>
+
+        <div class="home-cta">
+          <a class="btn-primary" href="{% url 'account_login' %}">
+            로그인하고 시작하기
+          </a>
+        </div>
+      </div>
+
+      <div class="home-copy-logo">
+        <img src="{% static 'recapture_logo_big.png' %}" alt="Re:Capture 로고" class="hero-logo">
+      </div>
+    </div>
+
+    <div class="home-visual">
+      <div class="home-card">
+        <div class="home-card-title">자동 분류</div>
+        <div class="home-card-body">이미지 + OCR 기반으로 카테고리를 추천해요.</div>
+      </div>
+      <div class="home-card">
+        <div class="home-card-title">폴더 이동</div>
+        <div class="home-card-body">선택한 사진을 한 번에 정리할 수 있어요.</div>
+      </div>
+      <div class="home-card">
+        <div class="home-card-title">북마크 / 휴지통</div>
+        <div class="home-card-body">중요한 것만 모아보고, 정리는 깔끔하게.</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

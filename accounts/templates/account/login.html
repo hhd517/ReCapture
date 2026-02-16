@@ -98,7 +98,6 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        min-height: calc(100vh - 200px);
     }
 
     .login-box {
@@ -246,10 +245,6 @@
         text-decoration: none;
     }
 
-    /* ==========================
-       ✅ "밤티" 불릿/점 완전 제거 + 예쁜 에러 스타일
-       ========================== */
-
     /* 폼 전체 에러 알림 */
     .flash{
         margin: 0 0 14px 0;
@@ -294,5 +289,32 @@
         border-radius:10px;
         line-height:1.35;
     }
+
+    /* ✅ login.html에서만 헤더 두꺼워지는 현상 강제 방지 */
+@media (max-width: 768px){
+  header{
+    height: 60px !important;
+    padding: 0 20px !important;
+    padding-bottom: 0 !important;     /* base.css의 15px 제거 */
+    align-items: center !important;
+  }
+
+  header h1{
+    margin: 0 !important;             /* base.css의 15px 0 제거 */
+    line-height: 1 !important;
+  }
+
+  header h1 img{
+    height: 44px !important;          /* 로고 때문에 커지는 것도 방지 */
+    width: auto !important;
+    display: block !important;
+  }
+
+  nav{
+    flex-wrap: nowrap !important;     /* 줄바꿈되면 높이 늘어남 */
+    justify-content: flex-end !important;
+    gap: 10px !important;
+  }
+}
 </style>
 {% endblock %}
