@@ -69,3 +69,6 @@ classification/train_text.csv
 # =========================
 celerybeat-schedule
 *.log
+
+# Django collectstatic output
+/staticfiles/
