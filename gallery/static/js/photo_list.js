@@ -1,3 +1,5 @@
+console.log("PHOTO_LIST_JS LOADED ✅ 2026-02-16");
+
 function createSubCategory(parentId, csrfToken) {
     const subName = prompt('새로운 세부 폴더 이름을 입력하세요:');
     if (!subName) return;
@@ -64,6 +66,8 @@ async function updateSubCategoryOptions() {
     const parentId = document.getElementById('targetCategory').value;
     const subSelect = document.getElementById('targetSubCategory');
     
+    if (!subSelect) return;
+
     // 선택을 초기화했을 경우 소분류 드롭다운 숨김
     if (!parentId) {
         subSelect.style.display = 'none';
@@ -98,34 +102,52 @@ async function updateSubCategoryOptions() {
 
 // 이동 실행 함수 수정 (소분류 ID 우선 적용)
 async function moveSelectedPhotos() {
-    const selectedIds = Array.from(document.querySelectorAll('.photo-select-checkbox:checked')).map(cb => cb.value);
-    
-    const parentId = document.getElementById('targetCategory').value;
-    const subId = document.getElementById('targetSubCategory').value;
-    
-    // 소분류가 선택되었다면 소분류 ID를 사용하고, 아니면 대분류 ID를 사용
-    const targetId = subId || parentId;
+  const selectedIds = Array.from(document.querySelectorAll('.photo-select-checkbox:checked'))
+    .map(cb => cb.value);
 
-    if (selectedIds.length === 0 || !targetId) {
-        alert('사진과 이동할 폴더를 모두 선택해주세요!');
-        return;
-    }
+  const targetId = document.getElementById('targetCategory')?.value;
 
+  if (selectedIds.length === 0) {
+    alert('이동할 사진을 선택해주세요!');
+    return;
+  }
+  if (!targetId) {
+    alert('이동할 폴더를 선택해주세요!');
+    return;
+  }
+
+  try {
     const response = await fetch('/gallery/photos/move/', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': CSRF_TOKEN,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-            photoIds: selectedIds, 
-            categoryId: targetId // 최종 결정된 ID 전송
-        })
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': CSRF_TOKEN,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ photoIds: selectedIds, categoryId: targetId })
     });
 
-    if ((await response.json()).success) {
-        location.reload();
+    const text = await response.text(); // ✅ JSON 아닐 때도 확인 가능
+
+    if (!response.ok) {
+      alert(`이동 요청 실패 (HTTP ${response.status})\n` + text.slice(0, 300));
+      return;
     }
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      alert('서버 응답이 JSON이 아니에요:\n' + text.slice(0, 300));
+      return;
+    }
+
+    if (data.success) location.reload();
+    else alert('이동 실패: ' + (data.error || data.message || '알 수 없는 오류'));
+
+  } catch (e) {
+    console.error(e);
+    alert('이동 중 네트워크/JS 에러: ' + e.message);
+  }
 }
 
 function exitEditMode() {

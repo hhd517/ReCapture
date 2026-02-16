@@ -174,16 +174,16 @@
 
     <div class="move-actions">
         <div class="select-wrapper">
-            <select id="targetCategory" class="move-select" onchange="updateSubCategoryOptions()">
-                <option value="">대분류 선택</option>
-                {% for cat in categories %}
-                    <option value="{{ cat.id }}">{{ cat.name }}</option>
-                {% endfor %}
+            <select id="targetCategory" class="move-select" >
+                      <option value="">카테고리 선택</option>
+                        {% for item in move_category_options %}
+                        <option value="{{ item.id }}">
+                            {{ item.label }}
+                        </option>
+                    {% endfor %}
             </select>
             
-            <select id="targetSubCategory" class="move-select sub-select" style="display: none;">
-                <option value="">소분류 (선택 사항)</option>
-            </select>
+ 
         </div>
 
         <div class="button-group">
