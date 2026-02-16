@@ -295,3 +295,6 @@ CSRF_COOKIE_SECURE = False
 
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/gallery/"
+
+#모바일 확인용
+ALLOWED_HOSTS = ["*"]

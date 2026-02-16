@@ -169,6 +169,8 @@
 
   /* ✅ 카드 전체를 세로 컬럼 + 가운데 정렬 */
   .home-copy{
+    width: 100% !important;
+
     flex-direction: column;
     align-items: center;      /* ✅ 가로 가운데 */
     text-align: center;       /* ✅ 텍스트 가운데 */
@@ -193,6 +195,17 @@
     margin-top: 6px;          /* ✅ 너무 내려가서 비는 느낌 줄이기 */
     padding-top: 0;
     border-top: none;
+  }
+    /* ✅✅✅ 여기 추가: 전체를 1칼럼(세로)로 */
+  .home-hero-inner{
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  /* ✅✅✅ 여기 추가: 오른쪽 카드 3개도 1열로 */
+  .home-visual{
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
   }
 
 

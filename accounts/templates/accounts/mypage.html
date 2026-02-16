@@ -35,12 +35,26 @@
 {% endif %}
 
 <div class="logout-row">
-  <a class="logout-link" href="{% url 'account_logout' %}?next=/">
+  <a class="logout-link" id="btnLogout" href="{% url 'account_logout' %}?next=/">
     <span>로그아웃</span>
     <i class="fa-solid fa-right-from-bracket"></i>
-</a>
+  </a>
 </div>
-</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('btnLogout');
+  if (!btn) return;
+
+  btn.addEventListener('click', (e) => {
+    const ok = confirm('로그아웃 하시겠습니까?');
+    if (!ok) {
+      e.preventDefault();   // ✅ 취소면 이동(로그아웃) 막기
+    }
+    // ok면 그냥 href로 이동해서 로그아웃 진행
+  });
+});
+</script>
 
 <style>
   .btn-edit-profile{
