@@ -75,7 +75,6 @@ SITE_ID = 1
 
 # 로그인 후 리다이렉트 경로
 LOGIN_REDIRECT_URL = '/gallery/'         
-ACCOUNT_LOGOUT_REDIRECT_URL = '/accounts/login/'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -296,4 +295,3 @@ CSRF_COOKIE_SECURE = False
 
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/gallery/"
-LOGOUT_REDIRECT_URL = "/accounts/login/"
