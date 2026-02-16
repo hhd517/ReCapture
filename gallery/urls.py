@@ -46,6 +46,7 @@ urlpatterns = [
     path('settings/', base_views.settings_view, name='settings'),
 
     path('api/sub-categories/', category_views.get_sub_categories, name='get_sub_categories'),
+    
 
 
 ]

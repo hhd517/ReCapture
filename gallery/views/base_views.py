@@ -3,6 +3,33 @@ from django.contrib.auth.decorators import login_required
 from gallery.models import Photo, UserSetting, Category
 from django.db.models import Q
 
+
+def build_move_category_options(user):
+    # 대분류
+    roots = (
+        Category.objects
+        .filter(user=user, parent=None)
+        .exclude(name="분류 전")   # ← 너희 키에 맞게 수정
+        .order_by("name")
+    )
+
+    # 소분류 (내가 만든 폴더)
+    subs = Category.objects.filter(user=user).exclude(parent=None).order_by(
+        "parent_id", "name"
+    )
+
+    sub_map = {}
+    for s in subs:
+        sub_map.setdefault(s.parent_id, []).append(s)
+
+    options = []
+    for r in roots:
+        options.append({"id": r.id, "label": r.name})
+        for s in sub_map.get(r.id, []):
+            options.append({"id": s.id, "label": f"└ {s.name}"})
+
+    return options
+
 @login_required
 @login_required
 def settings_view(request):
@@ -94,6 +121,7 @@ def photo_list(request):
         'photos': photos.order_by('-created_at'),
         'categories': categories,
         'sub_categories': sub_categories,
+        'move_category_options': build_move_category_options(request.user),
         'current_category': int(category_id) if category_id else None,
         'current_sub_category': int(sub_category_id) if sub_category_id else None,
         'current_category_name': current_category_name,
