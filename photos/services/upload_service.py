@@ -114,9 +114,10 @@ def save_uploaded_file(user, uploaded_file: UploadedFile) -> Dict:
     for p in paths.values():
         _ensure_dir(p)
 
-    # 파일명 정리 (충돌 방지)
     original_name = uploaded_file.name
-    ext = os.path.splitext(original_name)[1].lower()
+
+    # 저장은 항상 JPEG로 하므로 확장자도 jpg로 고정 (확장자/실데이터 불일치 방지)
+    ext = ".jpg"
     unique_name = f"{uuid.uuid4().hex}{ext}"
 
     temp_path = os.path.join(paths["temp"], unique_name)
@@ -160,7 +161,7 @@ def save_uploaded_file(user, uploaded_file: UploadedFile) -> Dict:
     thumb_url = f"{settings.MEDIA_URL}thumbnails/{user_id}/{unique_name}"
 
     return {
-        "filename": original_name,
+        "filename": unique_name,
         "url": photo_url,
         "thumb_url": thumb_url,
         "file_size": file_size,
