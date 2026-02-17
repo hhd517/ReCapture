@@ -1,11 +1,10 @@
-# services/image_classifier.py
+# classification/services/image_classifier.py
 import os
 from pathlib import Path
 from django.conf import settings
 from typing import List, Tuple
 
 import torch
-import torch.nn.functional as F
 import timm
 from PIL import Image
 from torchvision import transforms
@@ -50,26 +49,56 @@ class ImageClassifier:
     ):
         self.device = torch.device(device)
 
-        # ✅ (출력 형태 유지)
         print("🔧 이미지 분류 모델 로딩 중...")
 
+        base_dir = Path(settings.BASE_DIR)
 
-        # ✅ model_path가 None이면 프로젝트 기준 절대경로로 기본값 설정
-        if model_path is None:
-            model_path = str(Path(settings.BASE_DIR) / "classification" / "models" / "efficientnet_v1.pth")
+        # ✅ (1) 기본 후보 경로들
+        default_path = base_dir / "classification" / "models" / "efficientnet_v1.pth"
+        alt_path = base_dir / "saved_models" / "efficientnet_v1.pth"
 
-        if not os.path.exists(model_path):
-            alt = str(Path(settings.BASE_DIR) / "saved_models" / "efficientnet_v1.pth")
-            if os.path.exists(alt):
-                model_path = alt
-            else:
+        # ✅ (2) Render 같은 환경에서 쓸 임시 저장 위치 (/tmp는 보통 write 가능)
+        tmp_path = Path("/tmp/efficientnet_v1.pth")
+
+        # ✅ (3) 우선순위: 직접 지정 > default > alt > tmp(이미 다운된 경우)
+        candidates = []
+        if model_path:
+            candidates.append(Path(model_path))
+        candidates.extend([default_path, alt_path, tmp_path])
+
+        resolved = None
+        for p in candidates:
+            if p.exists() and p.is_file() and p.stat().st_size > 1024 * 1024:
+                resolved = p
+                break
+
+        # ✅ (4) 없으면 HF URL에서 다운로드
+        if resolved is None:
+            url = os.getenv("EFFICIENTNET_MODEL_URL")
+            if not url:
                 raise FileNotFoundError(
-                    f"❌ 모델 파일이 없습니다: {model_path}\n"
+                    f"❌ 모델 파일이 없습니다:\n"
+                    f"- {default_path}\n"
+                    f"- {alt_path}\n"
+                    f"또는 환경변수 EFFICIENTNET_MODEL_URL을 설정하세요.\n"
                     f"cwd={os.getcwd()}"
                 )
 
-        print(f"   📂 모델 파일: {model_path}")
+            self._download_model(url, tmp_path)
 
+            if not tmp_path.exists() or tmp_path.stat().st_size < 1024 * 1024:
+                raise FileNotFoundError(
+                    f"❌ 모델 다운로드 실패: {tmp_path}\n"
+                    f"url={url}\n"
+                    f"cwd={os.getcwd()}"
+                )
+
+            resolved = tmp_path
+
+        model_path = str(resolved)
+        print(f"   📂 모델 파일: {model_path} ({Path(model_path).stat().st_size} bytes)")
+
+        # ✅ 모델 로드
         self.model = timm.create_model(
             model_name,
             pretrained=False,
@@ -97,6 +126,42 @@ class ImageClassifier:
         self.category_kr = self.CATEGORY_KR.copy()
 
         print(f"✅ 모델 준비 완료! (카테고리: {self.categories})\n")
+
+    def _download_model(self, url: str, out_path: Path):
+        """
+        모델 파일을 URL에서 내려받아 out_path에 저장
+        - HF resolve URL을 그대로 넣으면 됨
+        """
+        import requests
+
+        # 이미 받아둔 게 있으면 재사용(너무 자잘한 파일이면 재다운)
+        if out_path.exists() and out_path.stat().st_size > 10 * 1024 * 1024:
+            print(f"   ℹ️ 기존 다운로드 모델 재사용: {out_path}")
+            return
+
+        print(f"⬇️ 모델 다운로드 시작: {url}")
+
+        r = requests.get(url, timeout=180, stream=True)
+        r.raise_for_status()
+
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+
+        total = 0
+        with open(out_path, "wb") as f:
+            for chunk in r.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    f.write(chunk)
+                    total += len(chunk)
+
+        # ✅ 너무 작으면 HTML 에러 페이지 다운로드 가능성 있음 → 진단 로그
+        print(f"✅ 모델 다운로드 완료: {out_path} ({total} bytes)")
+
+        if total < 1024 * 1024:
+            try:
+                head = out_path.read_bytes()[:200]
+                print("⚠️ 다운로드 파일이 너무 작습니다. HEAD(200bytes):", head)
+            except Exception:
+                pass
 
     @torch.no_grad()
     def predict(self, image_path: str) -> Tuple[str, float]:
