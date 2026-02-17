@@ -1,4 +1,5 @@
 # photos/services/google_photos_service.py
+
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
@@ -63,7 +64,7 @@ class GooglePhotosService:
     def _refresh_force(self) -> bool:
         """
         ✅ expiry 정보가 없어도 401이 오면 refresh가 필요할 수 있음.
-        refresh_token이 있으면 무조건 refresh 시도.
+        refresh_token이 있으면 refresh 시도.
         """
         if not self.credentials:
             return False
@@ -85,6 +86,10 @@ class GooglePhotosService:
             raise ValueError("Google credentials token missing")
 
         return {"Authorization": f"Bearer {self.credentials.token}"}
+
+    # -------------------------
+    # OAuth Flow
+    # -------------------------
 
     @staticmethod
     def get_authorization_url(redirect_uri):
@@ -227,27 +232,64 @@ class GooglePhotosService:
             "사용자가 Picker에서 선택한 항목만 가져올 수 있습니다."
         )
 
-    def download_photo(self, media_item, save_path):
-        """사진 다운로드"""
-        base_url = media_item.get("baseUrl")
-        if not base_url:
-            media_file = media_item.get("mediaFile") or {}
-            base_url = media_file.get("baseUrl")
+    # -------------------------
+    # Download Utils
+    # -------------------------
 
+    @staticmethod
+    def _get_base_url(media_item):
+        """
+        Picker mediaItem에서 baseUrl 추출.
+        케이스:
+        - media_item["baseUrl"]
+        - media_item["mediaFile"]["baseUrl"]
+        """
+        base_url = media_item.get("baseUrl")
+        if base_url:
+            return base_url
+
+        media_file = media_item.get("mediaFile") or {}
+        base_url = media_file.get("baseUrl")
+        if base_url:
+            return base_url
+
+        return None
+
+    def download_photo_bytes(self, media_item) -> bytes:
+        """
+        ✅ 새로 추가: 파일로 저장하지 않고 bytes로 직접 다운로드
+        Celery/Cloudinary 저장 흐름에 최적.
+        """
+        base_url = self._get_base_url(media_item)
         if not base_url:
             raise ValueError("No baseUrl in media item")
 
         download_url = f"{base_url}=d"
 
-        resp = requests.get(download_url, headers=self._auth_headers(), timeout=60)
+        try:
+            resp = requests.get(download_url, headers=self._auth_headers(), timeout=60)
 
-        if resp.status_code == 401:
-            if self._refresh_force():
-                resp = requests.get(download_url, headers=self._auth_headers(), timeout=60)
+            if resp.status_code == 401:
+                if self._refresh_force():
+                    resp = requests.get(download_url, headers=self._auth_headers(), timeout=60)
 
-        resp.raise_for_status()
+            resp.raise_for_status()
+            return resp.content
+
+        except requests.RequestException as e:
+            raise ValueError(f"DOWNLOAD_FAILED: {e}")
+
+    def download_photo(self, media_item, save_path):
+        """
+        기존 호환용: bytes 다운로드 후 save_path에 저장
+        (기존 코드가 깨지지 않게 유지)
+        """
+        content = self.download_photo_bytes(media_item)
+
+        # 디렉토리 보장
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
         with open(save_path, "wb") as f:
-            f.write(resp.content)
+            f.write(content)
 
         return save_path

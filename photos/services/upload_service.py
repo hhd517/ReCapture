@@ -1,16 +1,15 @@
 # photos/services/upload_service.py
 
-import os
 import uuid
 import hashlib
 from datetime import datetime
-from typing import Dict
+from typing import Dict, Optional
 
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import UploadedFile
 
-from PIL import Image, ExifTags
+from PIL import Image, ExifTags, ImageOps
 import imagehash
 
 
@@ -25,6 +24,7 @@ def _calculate_sha256_bytes(data: bytes) -> str:
 
 
 def _calculate_image_hashes(image: Image.Image) -> Dict[str, str]:
+    # imagehash는 RGB/그레이 모두 동작하지만, 일관성을 위해 RGB 기준으로 계산
     return {
         "phash": str(imagehash.phash(image)),
         "dhash": str(imagehash.dhash(image)),
@@ -36,7 +36,10 @@ def _calculate_image_hashes(image: Image.Image) -> Dict[str, str]:
 # Image Utils
 # =========================
 
-def _extract_exif_taken_at(image: Image.Image):
+def _extract_exif_taken_at(image: Image.Image) -> Optional[datetime]:
+    """
+    EXIF DateTimeOriginal 추출. 없으면 None.
+    """
     try:
         exif = image._getexif()
         if not exif:
@@ -58,10 +61,33 @@ def _create_thumbnail(image: Image.Image, size=(300, 300)) -> Image.Image:
 
 
 def _pil_to_jpeg_bytes(image: Image.Image, quality: int) -> bytes:
-    """PIL Image -> JPEG bytes"""
+    """
+    PIL Image -> JPEG bytes
+    - 알파 채널이 있으면 흰 배경으로 합성
+    """
     from io import BytesIO
+
+    img = image
+
+    # 알파가 있는 경우(예: PNG) → 흰 배경에 합성 후 RGB로 저장
+    if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+        bg = Image.new("RGB", img.size, (255, 255, 255))
+        # alpha channel 가져오기
+        if img.mode == "RGBA":
+            alpha = img.split()[-1]
+            bg.paste(img, mask=alpha)
+        elif img.mode == "LA":
+            alpha = img.split()[-1]
+            bg.paste(img.convert("RGBA"), mask=alpha)
+        else:
+            # P mode with transparency
+            bg.paste(img.convert("RGBA"), mask=img.convert("RGBA").split()[-1])
+        img = bg
+    else:
+        img = img.convert("RGB")
+
     buf = BytesIO()
-    image.save(buf, format="JPEG", quality=quality)
+    img.save(buf, format="JPEG", quality=quality, optimize=True)
     return buf.getvalue()
 
 
@@ -71,53 +97,93 @@ def _pil_to_jpeg_bytes(image: Image.Image, quality: int) -> bytes:
 
 def save_uploaded_file(user, uploaded_file: UploadedFile) -> Dict:
     """
-    업로드된 이미지 파일을 Cloudinary(default_storage)에 저장하고 메타데이터 추출
+    업로드된 이미지 파일을 default_storage(운영: Cloudinary)에 저장하고 메타데이터 추출
+
+    반환값:
+    - storage_name: 원본 이미지가 저장된 storage key(name)  (DB image 필드에 저장)
+    - thumb_storage_name: 썸네일 저장된 storage key(name)   (선택 활용)
+    - url / thumb_url: 절대 URL
     """
-
     user_id = user.id
-    original_name = uploaded_file.name
+    original_name = getattr(uploaded_file, "name", "uploaded")
 
-    # 1) 원본 파일 bytes 확보 (업로드/구글 가져오기 모두 대응)
-    file_bytes = uploaded_file.read()
-    if hasattr(uploaded_file, "seek"):
-        uploaded_file.seek(0)
+    # 1) 원본 파일 bytes 확보
+    try:
+        file_bytes = uploaded_file.read()
+        if hasattr(uploaded_file, "seek"):
+            uploaded_file.seek(0)
+    except Exception as e:
+        raise ValueError(f"FILE_READ_FAILED: {e}")
 
-    # 2) PIL 로드 + RGB 통일
+    if not file_bytes:
+        raise ValueError("EMPTY_FILE")
+
+    # 2) PIL 로드 + EXIF 회전 보정 + RGB 통일
     from io import BytesIO
-    image = Image.open(BytesIO(file_bytes))
-    image = image.convert("RGB")
+
+    try:
+        image = Image.open(BytesIO(file_bytes))
+        # 폰 사진 회전 EXIF 반영(가장 흔한 운영 이슈)
+        image = ImageOps.exif_transpose(image)
+    except Exception as e:
+        raise ValueError(f"INVALID_IMAGE: {e}")
 
     width, height = image.size
     file_size = len(file_bytes)
 
     # 3) 해시/메타
     file_hash = _calculate_sha256_bytes(file_bytes)
-    image_hashes = _calculate_image_hashes(image)
+
+    # hash는 RGB 기반으로 통일(알파/팔레트 제거)
+    image_for_hash = image.convert("RGB")
+    image_hashes = _calculate_image_hashes(image_for_hash)
+
     taken_at = _extract_exif_taken_at(image)
 
     # 4) 저장 파일명(확장자/실데이터 불일치 방지 위해 jpg 고정)
     unique_name = f"{uuid.uuid4().hex}.jpg"
 
-    # Cloudinary에 저장될 “경로(폴더)”를 이름에 포함시켜 관리
+    # Cloudinary에 저장될 “경로(폴더)”를 name에 포함시켜 관리
     photo_key = f"photos/{user_id}/{unique_name}"
     thumb_key = f"thumbnails/{user_id}/{unique_name}"
 
-    # 5) 원본/썸네일을 JPEG bytes로 만들어 storage에 저장
-    photo_bytes = _pil_to_jpeg_bytes(image, quality=95)
-    thumb_image = _create_thumbnail(image)
-    thumb_bytes = _pil_to_jpeg_bytes(thumb_image, quality=85)
+    saved_photo_name = None
+    saved_thumb_name = None
 
-    default_storage.save(photo_key, ContentFile(photo_bytes))
-    default_storage.save(thumb_key, ContentFile(thumb_bytes))
+    try:
+        # 5) 원본/썸네일을 JPEG bytes로 만들어 storage에 저장
+        photo_bytes = _pil_to_jpeg_bytes(image, quality=95)
 
-    # 6) URL은 storage가 만들어주는 “실제 접근 가능한 URL” 사용
-    photo_url = default_storage.url(photo_key)
-    thumb_url = default_storage.url(thumb_key)
+        thumb_image = _create_thumbnail(image)
+        thumb_bytes = _pil_to_jpeg_bytes(thumb_image, quality=85)
+
+        saved_photo_name = default_storage.save(photo_key, ContentFile(photo_bytes))
+        saved_thumb_name = default_storage.save(thumb_key, ContentFile(thumb_bytes))
+
+        photo_url = default_storage.url(saved_photo_name)
+        thumb_url = default_storage.url(saved_thumb_name)
+
+    except Exception as e:
+        # partial upload 정리(운영에서 비용/찌꺼기 방지)
+        try:
+            if saved_photo_name:
+                default_storage.delete(saved_photo_name)
+        except Exception:
+            pass
+        try:
+            if saved_thumb_name:
+                default_storage.delete(saved_thumb_name)
+        except Exception:
+            pass
+
+        raise ValueError(f"STORAGE_SAVE_FAILED: {e}")
 
     return {
-        "filename": original_name,        # 원래 파일명 유지(표시용)
-        "url": photo_url,                 # ✅ Cloudinary URL
-        "thumb_url": thumb_url,           # ✅ Cloudinary URL
+        "filename": original_name,                 # 표시용 원래 파일명
+        "storage_name": saved_photo_name,          # ✅ DB image 필드에 넣을 값
+        "thumb_storage_name": saved_thumb_name,    # ✅ 썸네일도 저장해두면 추후 활용 가능
+        "url": photo_url,                          # ✅ Cloudinary absolute URL
+        "thumb_url": thumb_url,                    # ✅ Cloudinary absolute URL
         "file_size": file_size,
         "width": width,
         "height": height,

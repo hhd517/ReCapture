@@ -4,7 +4,7 @@
 accounts 앱에서 토큰 발급 API가 반드시 선행되어야 한다.
 """
 
-import os
+from django.core.files.storage import default_storage
 
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.authentication import SessionAuthentication
@@ -32,7 +32,8 @@ def upload_photos(request):
     """
     (5) 직접 업로드
     - SHA-256 기준 완전히 동일한 파일만 중복 처리
-    - 업로드된 사진은 자동으로 "분류 전" 카테고리에 넣으려고!
+    - 업로드된 사진은 자동으로 "분류 전" 카테고리에 넣기
+    - 저장소는 default_storage(운영: Cloudinary)를 전제로 함
     """
     user = request.user
     files = request.FILES.getlist("files")
@@ -53,13 +54,14 @@ def upload_photos(request):
     created = []
     duplicates = []
 
-    from django.conf import settings
-    media_root_str = os.fspath(settings.MEDIA_ROOT)  # ✅ WindowsPath -> str
-
     for f in files:
+        # ✅ upload_service는 반드시 다음 값을 포함하도록 수정되어야 함:
+        # - meta["storage_name"] : default_storage에 저장된 name(key)
+        # - meta["thumb_storage_name"] (선택이지만 있으면 좋음)
+        # - meta["url"], meta["thumb_url"] : 절대 URL(Cloudinary)
         meta = save_uploaded_file(user, f)
 
-        # 1️⃣ Exact 중복 사전 체크
+        # 1) Exact 중복 사전 체크 (SHA-256)
         existing = Photo.objects.filter(
             user=user,
             file_hash=meta["file_hash"],
@@ -67,13 +69,21 @@ def upload_photos(request):
         ).first()
 
         if existing:
-            # 방금 저장한 파일/썸네일 정리
-            for path in (meta.get("_final_path"), meta.get("_thumb_path")):
-                if path and os.path.exists(path):
-                    try:
-                        os.remove(path)
-                    except OSError:
-                        pass
+            # ✅ 방금 업로드한 파일이 "이미 중복"이면 스토리지에서 제거(비용/용량 방지)
+            # (로컬 경로 _final_path/_thumb_path 삭제 로직 제거)
+            try:
+                storage_name = meta.get("storage_name")
+                if storage_name:
+                    default_storage.delete(storage_name)
+            except Exception:
+                pass
+
+            try:
+                thumb_storage_name = meta.get("thumb_storage_name")
+                if thumb_storage_name:
+                    default_storage.delete(thumb_storage_name)
+            except Exception:
+                pass
 
             duplicates.append(
                 {
@@ -83,19 +93,13 @@ def upload_photos(request):
             )
             continue
 
-        # 2️⃣ Photo 생성 ("분류 전" 카테고리에 자동 할당)
-        # ImageField에는 media root 기준 상대 경로 저장
-        final_path = meta["_final_path"]  # 보통 str
-        # ✅ 안전한 상대경로 계산 (Path/str 혼용 문제 해결)
-        relative_path = os.path.relpath(final_path, media_root_str)
-        # ✅ DB에는 슬래시 통일 (윈도우 백슬래시 방지)
-        relative_path = relative_path.replace("\\", "/")
-
+        # 2) Photo 생성 ("분류 전" 카테고리에 자동 할당)
+        # ✅ image 필드에는 "스토리지 key(name)"를 저장해야 함 (Cloudinary storage 기준)
         photo = Photo.objects.create(
             user=user,
             filename=meta["filename"],
-            image=relative_path,          # ✅ 상대 경로
-            url=meta["url"],              # 기존 로직 유지(원하면 이것도 relative로 통일 가능)
+            image=meta["storage_name"],   # ✅ Cloudinary storage key (예: photos/1/uuid.jpg)
+            url=meta["url"],              # ✅ Cloudinary absolute URL
             file_size=meta["file_size"],
             file_hash=meta["file_hash"],
             phash=meta["phash"],
@@ -108,7 +112,7 @@ def upload_photos(request):
             category=unclassified_category,
         )
 
-        # 3️⃣ 생성 직후 exact duplicate 재확인 + 마킹
+        # 3) 생성 직후 exact duplicate 재확인 + 마킹
         DeduplicationService.check_exact_duplicate_and_mark(
             user,
             photo=photo,
