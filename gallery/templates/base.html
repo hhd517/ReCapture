@@ -9,43 +9,48 @@
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 </head>
-
 <body>
     <header>
-        <div class="header-container">
-            <div class="logo">
-                <a href="/gallery/">Re:Capture</a>
-            </div>
+        <div class="header-left">
+            {% block sidebar_toggle %}
+            {% endblock sidebar_toggle %}
 
+            <h1>
+                <a href="/" style="display:flex; align-items:center; gap:4px;">
+                    <img src="{% static 'recapture_logo.png' %}" alt="Re:Capture" style="height:44px; width:auto;">
+                    Re:Capture
+                </a>
+            </h1>
+        </div>
+
+        <div class="header-right">
             {% if user.is_authenticated %}
                 <nav>
-                    <a href="/gallery/settings/" class="btn-settings">
+                    <a href="{% url 'accounts:mypage' %}" class="btn-mypage">
+                        <i class="fa-solid fa-user"></i>
+                    </a>
+
+                    <a href="{% url 'gallery:settings' %}" class="btn-mypage" title="설정">
                         <i class="fa-solid fa-gear"></i>
                     </a>
 
-                    <div class="dropdown">
-                        <button class="btn-notification">
+                    <div class="notification-dropdown">
+                        <button class="noti-btn">
                             <i class="fa-solid fa-bell"></i>
                             {% if unread_notifications_count > 0 %}
-                                <span class="notification-badge">{{ unread_notifications_count }}</span>
+                                <span id="noti-count">{{ unread_notifications_count }}</span>
                             {% endif %}
                         </button>
 
                         <div class="dropdown-content">
-                            <div class="noti-header">
-                                <span>알림</span>
-                            </div>
-
-                            <div class="noti-list">
-                                {% for noti in notifications %}
-                                    <div class="noti-item {% if not noti.is_read %}unread{% endif %}">
-                                        <div class="noti-message">{{ noti.message }}</div>
-                                        <div class="noti-time">{{ noti.created_at|date:"m/d H:i" }}</div>
-                                    </div>
-                                {% empty %}
-                                    <div class="noti-item">새로운 알림이 없습니다.</div>
-                                {% endfor %}
-                            </div>
+                            {% for noti in latest_notifications %}
+                                <div class="noti-item {% if not noti.is_read %}unread{% endif %}">
+                                    <span class="noti-type">[{{ noti.get_notif_type_display }}]</span><br>
+                                    {{ noti.message }}
+                                </div>
+                            {% empty %}
+                                <div class="noti-item">새로운 알림이 없습니다.</div>
+                            {% endfor %}
                         </div>
                     </div>
                 </nav>
@@ -61,68 +66,5 @@
         {% block content %}
         {% endblock %}
     </main>
-
-    <!-- ✅ 전역 fetch 헬퍼(프론트 안정화) -->
-    <script>
-      (function () {
-        function getAuthToken() {
-          try { return localStorage.getItem('auth_token'); } catch (e) { return null; }
-        }
-
-        function mergeHeaders(base, extra) {
-          const out = {};
-          if (base) {
-            for (const [k, v] of Object.entries(base)) out[k] = v;
-          }
-          if (extra) {
-            for (const [k, v] of Object.entries(extra)) out[k] = v;
-          }
-          return out;
-        }
-
-        // ✅ token이 있을 때만 Authorization 헤더를 붙임
-        window.buildAuthHeaders = function (headers) {
-          const token = getAuthToken();
-          const merged = mergeHeaders(headers || {}, {});
-          if (token) merged['Authorization'] = `Token ${token}`;
-          return merged;
-        };
-
-        // ✅ HTML/에러 응답이 와도 안전하게 처리 (Unexpected token '<' 방지)
-        window.fetchJsonSafe = async function (url, options) {
-          const opts = options ? { ...options } : {};
-          opts.credentials = opts.credentials || 'same-origin';
-          opts.headers = window.buildAuthHeaders(opts.headers || {});
-
-          const res = await fetch(url, opts);
-          const contentType = (res.headers.get('content-type') || '').toLowerCase();
-          const isJson = contentType.includes('application/json');
-
-          // 에러 상태일 때도 JSON일 수 있으니 먼저 파싱 시도
-          if (!res.ok) {
-            let detail = '';
-            try {
-              if (isJson) {
-                const data = await res.json();
-                detail = data?.message || data?.error || JSON.stringify(data);
-              } else {
-                const text = await res.text();
-                detail = text.slice(0, 500);
-              }
-            } catch (e) {
-              detail = `응답 파싱 실패 (${contentType})`;
-            }
-            throw new Error(`HTTP ${res.status} ${res.statusText}: ${detail}`);
-          }
-
-          if (!isJson) {
-            const text = await res.text().catch(() => '');
-            throw new Error(`JSON 응답이 아닙니다 (${contentType}): ${text.slice(0, 500)}`);
-          }
-
-          return await res.json();
-        };
-      })();
-    </script>
 </body>
 </html>
