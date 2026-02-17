@@ -27,7 +27,6 @@ db.sqlite3
 # Media / Static / Storage
 # =========================
 media/
-static/
 storage/
 
 # =========================
