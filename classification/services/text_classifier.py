@@ -11,8 +11,12 @@ from django.conf import settings
 class TextClassifier:
     """
     🧠 텍스트 분류기 (4카테고리)
-    - 로컬 모델 폴더가 있으면 로컬 로드
-    - 없으면 Hugging Face Hub에서 subfolder(text_model_v1)로 로드
+
+    ✅ 기본: HF 우선 로드 (배포 안정)
+      - Hugging Face Hub에서 subfolder(text_model_v1)로 로드
+    ✅ 로컬 강제: TEXT_MODEL_SOURCE=local 일 때만 로컬 우선
+      - classification/models/text_model_v1 폴더가 존재할 경우 로컬에서 로드
+
     - label_map.json 우선, 없으면 DEFAULT_4 사용
     """
 
@@ -30,6 +34,7 @@ class TextClassifier:
 
     def __init__(self):
         print("🔧 텍스트 분류 모델 로딩 중...")
+        print("✅ TextClassifier: HF 우선 로드 버전(2026-02-18)")
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -38,21 +43,27 @@ class TextClassifier:
         hf_repo = os.getenv("TEXT_MODEL_HF_REPO", self.DEFAULT_HF_REPO)
         hf_subfolder = os.getenv("TEXT_MODEL_HF_SUBFOLDER", self.DEFAULT_HF_SUBFOLDER)
 
-        # ✅ 로딩 소스 선택
-        if local_dir.exists():
+        # ✅ HF 우선 정책
+        # - 기본: HF 로드
+        # - TEXT_MODEL_SOURCE=local 인 경우에만 로컬 우선
+        source_pref = os.getenv("TEXT_MODEL_SOURCE", "hf").strip().lower()
+        use_local = (source_pref == "local")
+
+        if use_local and local_dir.exists():
             source = str(local_dir)
             is_hf = False
-            print(f"   📂 로컬에서 로드: {source}")
+            print(f"   📂 로컬에서 로드(강제 local): {source}")
         else:
             source = hf_repo
             is_hf = True
-            print(f"   📦 HF에서 로드: {hf_repo}/{hf_subfolder}")
+            print(f"   📦 HF에서 로드(기본): {hf_repo}/{hf_subfolder}")
 
         # ✅ 라벨맵 로드
         self.id_to_label = self._load_label_map(local_dir, hf_repo, hf_subfolder, is_hf)
 
-        # ✅ 모델/토크나이저 로드 (HF는 subfolder 필수)
+        # ✅ 모델/토크나이저 로드
         if is_hf:
+            # HF는 subfolder 필수
             self.tokenizer = AutoTokenizer.from_pretrained(source, subfolder=hf_subfolder)
             self.model = AutoModelForSequenceClassification.from_pretrained(source, subfolder=hf_subfolder)
         else:
@@ -72,7 +83,7 @@ class TextClassifier:
                 with open(p, "r", encoding="utf-8") as f:
                     label_map = json.load(f)
                 id_to_label = {int(v): k for k, v in label_map.items()}
-                print(f"✅ 라벨 맵핑 로드 완료: {len(id_to_label)}개 카테고리")
+                print(f"✅ 라벨 맵핑 로드 완료(LOCAL): {len(id_to_label)}개 카테고리")
                 return id_to_label
 
             print("⚠️ label_map.json이 없습니다 → DEFAULT_4로 임시 설정합니다.")
@@ -82,7 +93,6 @@ class TextClassifier:
         try:
             from huggingface_hub import hf_hub_download
 
-            # HF는 subfolder/filename을 합쳐서 지정
             path = hf_hub_download(
                 repo_id=hf_repo,
                 filename=f"{hf_subfolder}/label_map.json",
