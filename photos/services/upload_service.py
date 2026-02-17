@@ -6,7 +6,8 @@ import hashlib
 from datetime import datetime
 from typing import Dict
 
-from django.conf import settings
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import UploadedFile
 
 from PIL import Image, ExifTags
@@ -14,41 +15,16 @@ import imagehash
 
 
 # =========================
-# Path Utils
+# Hash Utils (bytes 기반)
 # =========================
 
-def _ensure_dir(path: str):
-    """디렉토리 없으면 생성"""
-    os.makedirs(path, exist_ok=True)
-
-
-def _user_storage_paths(user_id: int) -> Dict[str, str]:
-    """
-    사용자별 저장 경로 반환
-    """
-    base = settings.MEDIA_ROOT
-    return {
-        "temp": os.path.join(base, "temp", str(user_id)),
-        "photo": os.path.join(base, "photos", str(user_id)),
-        "thumb": os.path.join(base, "thumbnails", str(user_id)),
-    }
-
-
-# =========================
-# Hash Utils
-# =========================
-
-def _calculate_sha256(file_path: str) -> str:
-    """SHA-256 해시 계산 (Exact duplicate)"""
+def _calculate_sha256_bytes(data: bytes) -> str:
     sha256 = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            sha256.update(chunk)
+    sha256.update(data)
     return sha256.hexdigest()
 
 
 def _calculate_image_hashes(image: Image.Image) -> Dict[str, str]:
-    """pHash / dHash / aHash 계산"""
     return {
         "phash": str(imagehash.phash(image)),
         "dhash": str(imagehash.dhash(image)),
@@ -61,7 +37,6 @@ def _calculate_image_hashes(image: Image.Image) -> Dict[str, str]:
 # =========================
 
 def _extract_exif_taken_at(image: Image.Image):
-    """EXIF 촬영 시간 추출"""
     try:
         exif = image._getexif()
         if not exif:
@@ -73,15 +48,21 @@ def _extract_exif_taken_at(image: Image.Image):
                 return datetime.strptime(value, "%Y:%m:%d %H:%M:%S")
     except Exception:
         return None
-
     return None
 
 
 def _create_thumbnail(image: Image.Image, size=(300, 300)) -> Image.Image:
-    """썸네일 생성"""
     thumb = image.copy()
     thumb.thumbnail(size)
     return thumb
+
+
+def _pil_to_jpeg_bytes(image: Image.Image, quality: int) -> bytes:
+    """PIL Image -> JPEG bytes"""
+    from io import BytesIO
+    buf = BytesIO()
+    image.save(buf, format="JPEG", quality=quality)
+    return buf.getvalue()
 
 
 # =========================
@@ -90,80 +71,53 @@ def _create_thumbnail(image: Image.Image, size=(300, 300)) -> Image.Image:
 
 def save_uploaded_file(user, uploaded_file: UploadedFile) -> Dict:
     """
-    업로드된 이미지 파일 저장 및 메타데이터 추출
-
-    return:
-    {
-        filename,
-        url,
-        thumb_url,
-        file_size,
-        width,
-        height,
-        taken_at,
-        file_hash,
-        phash,
-        dhash,
-        ahash,
-    }
+    업로드된 이미지 파일을 Cloudinary(default_storage)에 저장하고 메타데이터 추출
     """
 
     user_id = user.id
-    paths = _user_storage_paths(user_id)
-
-    for p in paths.values():
-        _ensure_dir(p)
-
     original_name = uploaded_file.name
 
-    # 저장은 항상 JPEG로 하므로 확장자도 jpg로 고정 (확장자/실데이터 불일치 방지)
-    ext = ".jpg"
-    unique_name = f"{uuid.uuid4().hex}{ext}"
+    # 1) 원본 파일 bytes 확보 (업로드/구글 가져오기 모두 대응)
+    file_bytes = uploaded_file.read()
+    if hasattr(uploaded_file, "seek"):
+        uploaded_file.seek(0)
 
-    temp_path = os.path.join(paths["temp"], unique_name)
-    final_path = os.path.join(paths["photo"], unique_name)
-    thumb_path = os.path.join(paths["thumb"], unique_name)
-
-    # 임시 저장
-    with open(temp_path, "wb+") as f:
-        for chunk in uploaded_file.chunks():
-            f.write(chunk)
-
-    # 이미지 로드
-    image = Image.open(temp_path)
-    image = image.convert("RGB")  # 포맷 통일
+    # 2) PIL 로드 + RGB 통일
+    from io import BytesIO
+    image = Image.open(BytesIO(file_bytes))
+    image = image.convert("RGB")
 
     width, height = image.size
-    file_size = uploaded_file.size
+    file_size = len(file_bytes)
 
-    # 해시 계산
-    file_hash = _calculate_sha256(temp_path)
+    # 3) 해시/메타
+    file_hash = _calculate_sha256_bytes(file_bytes)
     image_hashes = _calculate_image_hashes(image)
-
-    # 메타데이터
     taken_at = _extract_exif_taken_at(image)
 
-    # 원본 저장
-    image.save(final_path, format="JPEG", quality=95)
+    # 4) 저장 파일명(확장자/실데이터 불일치 방지 위해 jpg 고정)
+    unique_name = f"{uuid.uuid4().hex}.jpg"
 
-    # 썸네일 생성
-    thumbnail = _create_thumbnail(image)
-    thumbnail.save(thumb_path, format="JPEG", quality=85)
+    # Cloudinary에 저장될 “경로(폴더)”를 이름에 포함시켜 관리
+    photo_key = f"photos/{user_id}/{unique_name}"
+    thumb_key = f"thumbnails/{user_id}/{unique_name}"
 
-    # temp 파일 삭제
-    try:
-        os.remove(temp_path)
-    except OSError:
-        pass
+    # 5) 원본/썸네일을 JPEG bytes로 만들어 storage에 저장
+    photo_bytes = _pil_to_jpeg_bytes(image, quality=95)
+    thumb_image = _create_thumbnail(image)
+    thumb_bytes = _pil_to_jpeg_bytes(thumb_image, quality=85)
 
-    # URL 구성
-    photo_url = f"{settings.MEDIA_URL}photos/{user_id}/{unique_name}"
-    thumb_url = f"{settings.MEDIA_URL}thumbnails/{user_id}/{unique_name}"
+    default_storage.save(photo_key, ContentFile(photo_bytes))
+    default_storage.save(thumb_key, ContentFile(thumb_bytes))
+
+    # 6) URL은 storage가 만들어주는 “실제 접근 가능한 URL” 사용
+    photo_url = default_storage.url(photo_key)
+    thumb_url = default_storage.url(thumb_key)
 
     return {
-        "filename": unique_name,
-        "url": photo_url,
-        "thumb_url": thumb_url,
+        "filename": original_name,        # 원래 파일명 유지(표시용)
+        "url": photo_url,                 # ✅ Cloudinary URL
+        "thumb_url": thumb_url,           # ✅ Cloudinary URL
         "file_size": file_size,
         "width": width,
         "height": height,
@@ -172,9 +126,4 @@ def save_uploaded_file(user, uploaded_file: UploadedFile) -> Dict:
         "phash": image_hashes["phash"],
         "dhash": image_hashes["dhash"],
         "ahash": image_hashes["ahash"],
-
-        
-        # 내부 처리용(중복 시 파일 정리 등). 외부 응답에는 쓰지 않아도 됨.
-        "_final_path": final_path,
-        "_thumb_path": thumb_path,
     }
