@@ -10,19 +10,13 @@ from django.conf import settings
 
 class TextClassifier:
     """
-    🧠 텍스트 분류기 (✅ 4카테고리 기준)
-
-    - 로컬 경로(classification/models/text_model_v1)가 있으면 우선 로드(개발 편의)
-    - 없으면 Hugging Face Hub에서 subfolder(text_model_v1)로 로드(운영 안정)
-    - label_map.json이 있으면 그걸 신뢰, 없으면 DEFAULT_4 사용
+    🧠 텍스트 분류기 (4카테고리)
+    - 로컬 모델 폴더가 있으면 로컬 로드
+    - 없으면 Hugging Face Hub에서 subfolder(text_model_v1)로 로드
+    - label_map.json 우선, 없으면 DEFAULT_4 사용
     """
 
-    DEFAULT_4 = [
-        "finance",
-        "study_note",
-        "info",
-        "others",
-    ]
+    DEFAULT_4 = ["finance", "study_note", "info", "others"]
 
     CATEGORY_KR_4 = {
         "finance": "결제/예약",
@@ -31,7 +25,6 @@ class TextClassifier:
         "others": "기타",
     }
 
-    # ✅ HF 리포 기본값 (필요하면 ENV로 바꿀 수 있게)
     DEFAULT_HF_REPO = "junghae/recapture-model"
     DEFAULT_HF_SUBFOLDER = "text_model_v1"
 
@@ -42,34 +35,29 @@ class TextClassifier:
 
         local_dir = Path(settings.BASE_DIR) / "classification" / "models" / "text_model_v1"
 
-        # ✅ HF 리포는 ENV로 오버라이드 가능하게
         hf_repo = os.getenv("TEXT_MODEL_HF_REPO", self.DEFAULT_HF_REPO)
         hf_subfolder = os.getenv("TEXT_MODEL_HF_SUBFOLDER", self.DEFAULT_HF_SUBFOLDER)
 
-        # ✅ 로딩 소스 결정 (로컬 우선, 없으면 HF)
+        # ✅ 로딩 소스 선택
         if local_dir.exists():
             source = str(local_dir)
             is_hf = False
+            print(f"   📂 로컬에서 로드: {source}")
         else:
             source = hf_repo
             is_hf = True
+            print(f"   📦 HF에서 로드: {hf_repo}/{hf_subfolder}")
 
         # ✅ 라벨맵 로드
-        # - 로컬이면 기존처럼 파일 읽기
-        # - HF면 huggingface_hub로 label_map.json을 다운받아 읽기
         self.id_to_label = self._load_label_map(local_dir, hf_repo, hf_subfolder, is_hf)
 
-        # ✅ 모델/토크나이저 로드
+        # ✅ 모델/토크나이저 로드 (HF는 subfolder 필수)
         if is_hf:
-            # HF Hub에서 subfolder로 로드
             self.tokenizer = AutoTokenizer.from_pretrained(source, subfolder=hf_subfolder)
             self.model = AutoModelForSequenceClassification.from_pretrained(source, subfolder=hf_subfolder)
-            print(f"   📦 HF에서 로드: {source}/{hf_subfolder}")
         else:
-            # 로컬 폴더에서 로드
             self.tokenizer = AutoTokenizer.from_pretrained(source)
             self.model = AutoModelForSequenceClassification.from_pretrained(source)
-            print(f"   📂 로컬에서 로드: {source}")
 
         self.model.to(self.device)
         self.model.eval()
@@ -77,13 +65,11 @@ class TextClassifier:
         print(f"✅ 모델 로드 성공 (Device: {self.device})")
 
     def _load_label_map(self, local_dir: Path, hf_repo: str, hf_subfolder: str, is_hf: bool):
-        """
-        label_map.json 우선 로드, 없으면 DEFAULT_4
-        """
+        # 로컬
         if not is_hf:
-            label_map_path = local_dir / "label_map.json"
-            if label_map_path.exists():
-                with open(label_map_path, "r", encoding="utf-8") as f:
+            p = local_dir / "label_map.json"
+            if p.exists():
+                with open(p, "r", encoding="utf-8") as f:
                     label_map = json.load(f)
                 id_to_label = {int(v): k for k, v in label_map.items()}
                 print(f"✅ 라벨 맵핑 로드 완료: {len(id_to_label)}개 카테고리")
@@ -92,29 +78,27 @@ class TextClassifier:
             print("⚠️ label_map.json이 없습니다 → DEFAULT_4로 임시 설정합니다.")
             return {i: cat for i, cat in enumerate(self.DEFAULT_4)}
 
-        # ✅ HF에서 label_map.json 가져오기
+        # HF
         try:
             from huggingface_hub import hf_hub_download
 
-            filename = "label_map.json"
-            # subfolder 아래 파일을 정확히 지정
+            # HF는 subfolder/filename을 합쳐서 지정
             path = hf_hub_download(
                 repo_id=hf_repo,
-                filename=f"{hf_subfolder}/{filename}",
+                filename=f"{hf_subfolder}/label_map.json",
             )
             with open(path, "r", encoding="utf-8") as f:
                 label_map = json.load(f)
+
             id_to_label = {int(v): k for k, v in label_map.items()}
             print(f"✅ 라벨 맵핑 로드 완료(HF): {len(id_to_label)}개 카테고리")
             return id_to_label
 
-        except Exception:
-            # HF에도 label_map.json 없으면 DEFAULT로
-            print("⚠️ label_map.json(HF)을 찾지 못했습니다 → DEFAULT_4로 임시 설정합니다.")
+        except Exception as e:
+            print(f"⚠️ label_map.json(HF) 로드 실패 → DEFAULT_4 사용 ({e})")
             return {i: cat for i, cat in enumerate(self.DEFAULT_4)}
 
     def predict(self, text: str):
-        """텍스트 -> (category, confidence)"""
         if not text or len(text.strip()) < 2:
             return "others", 0.0
 
@@ -140,5 +124,4 @@ class TextClassifier:
 
     def predict_with_korean(self, text: str):
         cat, conf = self.predict(text)
-        kr = self.CATEGORY_KR_4.get(cat, cat)
-        return cat, kr, conf
+        return cat, self.CATEGORY_KR_4.get(cat, cat), conf
