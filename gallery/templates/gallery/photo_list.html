@@ -1,700 +1,248 @@
-{% extends 'base.html' %}
-{% load static %}
-
-{% block sidebar_toggle %}
-    <button id="sidebarToggle" class="sidebar-open-btn">
-        <i class="fa-solid fa-bars"></i>
-    </button>
-{% endblock sidebar_toggle %}
-
-{% block content %}
-<link rel="stylesheet" href="{% static 'css/gallery.css' %}">
-
-
-<div id="filterSidebar" class="filter-sidebar">
-    <div class="sidebar-header">
-        <h3>카테고리</h3>
-        <button id="sidebarClose" style="background:none; border:none; font-size:20px; cursor:pointer;">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
-    </div>
-    <div class="sidebar-content">
-        <a href="?" class="filter-link {% if not current_category and not is_bookmarked %}active{% endif %}">전체</a>
-        {% for cat in categories %}
-            <a href="?category_id={{ cat.id }}{% if is_bookmarked %}&bookmarked=true{% endif %}"
-               class="filter-link {% if current_category == cat.id %}active{% endif %}">
-                {{ cat.name }}
-            </a>
-        {% endfor %}
-        <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
-        
-        <a href="?bookmarked={% if is_bookmarked %}false{% else %}true{% endif %}" class="filter-link {% if is_bookmarked %}active{% endif %}">
-            <i class="fa-solid fa-bookmark"></i> 북마크 보기
-        </a>
-        <a href="{% url 'gallery:trash_list' %}" class="filter-link">
-            <i class="fa-solid fa-trash-can"></i> 휴지통
-        </a>
-
-        {% if current_category %}
-            <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
-            <p style="font-size: 12px; color: #999; margin-bottom: 10px;">세부 폴더</p>
-            {% for sub in sub_categories %}
-                <a href="?category_id={{ current_category }}&sub_category_id={{ sub.id }}" class="filter-link">
-                    #{{ sub.name }}
-                </a>
-            {% endfor %}
-        {% endif %}
-    </div>
-</div>
-
-<div id="sidebarOverlay" class="sidebar-overlay"></div>
-
-<div class="gallery-header">
-    <form method="GET" action="{% url 'gallery:photo_list' %}" class="header-search-form">
-        <input type="text" name="q" value="{{ query|default:'' }}" placeholder="메모로 검색" class="search-input">
-        <button type="submit" class="search-btn">
-            <i class="fa-solid fa-magnifying-glass"></i>
-        </button>
-
-        {% if current_category %}<input type="hidden" name="category_id" value="{{ current_category }}">{% endif %}
-        {% if current_sub_category %}<input type="hidden" name="sub_category_id" value="{{ current_sub_category }}">{% endif %}
-        {% if is_bookmarked %}<input type="hidden" name="bookmarked" value="true">{% endif %}
-    </form>
-    
-    <button class="btn-action btn-dnd" id="openDragDropBtn" onclick="openDragDropUpload()" title="사진 업로드">
-        <i class="fa-solid fa-images"></i>
-    </button>        
-    <button class="btn-action btn-camera" onclick="document.getElementById('cameraInput').click()" title="사진 촬영하기">
-        <i class="fa-solid fa-camera"></i>
-    </button>
-
-    <input type="file" id="fileInput" multiple accept="image/*" style="display: none;" onchange="uploadPhotos(event)">
-    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="uploadPhotos(event)">
-
-    <button class="btn-action btn-google" id="googlePhotosBtn" onclick="importGooglePhotos()" title="googlephoto 연동하기">
-        <i class="fa-brands fa-google"></i>
-    </button>
-
-
-    {% if photos and current_category_name == '분류 전' %}
-    <button class="btn-action btn-classify" onclick="classifyPhotos()">
-        <i class="fa-solid fa-arrows-rotate"></i>
-    </button>
-    {% endif %}
-
-    <button class="btn-action" id="editModeBtn" title="사진 편집">
-        <i class="fa-solid fa-ellipsis-vertical"></i>
-    </button>
-</div>
-
-<div id="importProgress" style="display: none; padding: 15px; background: #e3f2fd; border-radius: 8px; margin-bottom: 20px;">
-    <div style="display: flex; align-items: center; gap: 10px;">
-        <div class="spinner" style="border: 3px solid #f3f3f3; border-top: 3px solid #4285f4; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite;"></div>
-        <span id="importStatus">구글 포토에서 사진을 가져오는 중...</span>
-    </div>
-    <div style="margin-top: 10px;">
-        <div style="background: #ddd; height: 8px; border-radius: 4px; overflow: hidden;">
-            <div id="progressBar" style="background: #4285f4; height: 100%; width: 0%; transition: width 0.3s;"></div>
-        </div>
-        <small id="progressText" style="color: #666; margin-top: 5px; display: block;">0 / 0</small>
-    </div>
-</div>
-
-<div class="filter-bar pc-only" style="display: flex; align-items: center; justify-content: space-between;">
-    <div style="display: flex; align-items: center;">
-        <a href="?" class="filter-link {% if not current_category and not is_bookmarked %}active{% endif %}">전체</a>
-        {% for cat in categories %}
-            <a href="?category_id={{ cat.id }}{% if is_bookmarked %}&bookmarked=true{% endif %}"
-               class="filter-link {% if current_category == cat.id %}active{% endif %}">
-                {{ cat.name }}{% if cat.name == '분류 전' %} ({{ cat.photos.count }}){% endif %}
-            </a>
-        {% endfor %}
-        <span style="margin: 0 10px; color: #eee;">|</span>
-        <a href="?bookmarked={% if is_bookmarked %}false{% else %}true{% endif %}{% if current_category %}&category_id={{ current_category }}{% endif %}" 
-            class="filter-link bookmark-filter {% if is_bookmarked %}active-bookmark{% endif %}" 
-            title="북마크 모아보기">
-            {% if is_bookmarked %}
-                <i class="fa-solid fa-bookmark"></i> {% else %}
-                <i class="fa-regular fa-bookmark"></i> {% endif %}
-            <span style="margin-left: 5px;">북마크</span>
-        </a>
-    </div>
-    <a href="{% url 'gallery:trash_list' %}" class="trash-link" title="휴지통" style="margin-left: auto; color: #999; font-size: 18px;">
-        <i class="fa-solid fa-trash-can"></i>
-    </a>
-</div>
-
-{% if current_category and current_category_name != '분류 전' %}
-<div class="sub-filter-bar pc-only" style="background: #ffffff; padding: 15px 25px; border-radius: 15px; border: 1px solid #eee; margin-bottom: 20px; display: flex; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02); flex-wrap: wrap; gap: 8px;">
-    <span style="margin-right: 10px; color: #555; font-weight: 600;">📁 세부 폴더</span>
-    
-    <a href="?category_id={{ current_category }}{% if is_bookmarked %}&bookmarked=true{% endif %}"
-       class="filter-link {% if not current_sub_category %}active{% endif %}" 
-       style="padding: 6px 14px; border-radius: 20px; font-size: 14px; text-decoration: none; color: #666;">
-       전체
-    </a>
-
-    {% for sub in sub_categories %}
-        <a href="?category_id={{ current_category }}&sub_category_id={{ sub.id }}{% if is_bookmarked %}&bookmarked=true{% endif %}"
-        class="filter-link {% if current_sub_category == sub.id %}active{% endif %}"
-        style="background: #f8f9fa; position: relative; display: inline-flex; align-items: center; gap: 8px;">
-        
-        {{ sub.name }}
-
-        <span class="sub-management-icons" style="display: none; gap: 5px; border-left: 1px solid #ddd; padding-left: 5px; margin-left: 5px;">
-                <button onclick="event.preventDefault(); editSubCategory({{ sub.id }}, '{{ sub.name }}')" style="background: none; border: none; cursor: pointer; color: #999; font-size: 10px; padding: 0;">
-                    <i class="fa-solid fa-pen"></i>
-                </button>
-                <button onclick="event.preventDefault(); deleteSubCategory({{ sub.id }}, '{{ sub.name }}')" style="background: none; border: none; cursor: pointer; color: #ff4757; font-size: 10px; padding: 0;">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-        </span>
-        </a>
-    {% endfor %}
-
-    <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
-        <button onclick="toggleSubEditMode(this)" id="subEditToggle" title="폴더 관리"
-                style="background: #f1f1f1; border: none; color: #666; cursor: pointer; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; transition: 0.2s;">
-            <i class="fa-solid fa-gear"></i>
-        </button>
-        
-        <button onclick="createSubCategory({{ current_category }}, '{{ csrf_token }}')"
-                style="border: 1px dashed #007bff; background: white; color: #007bff; cursor: pointer; border-radius: 20px; padding: 6px 12px; font-size: 13px; font-weight: 600;">
-            <i class="fa-solid fa-plus"></i> 추가
-        </button>
-    </div>
-</div>
-{% endif %}
-
-<div id="moveControlBar" class="move-control-bar" style="display: none;">
-    <div class="move-info">
-        <span class="count-badge" id="selectedCount">0</span>
-        <span class="count-text">장 선택됨</span>
-    </div>
-
-    <div class="move-actions">
-        <div class="select-wrapper">
-            <select id="targetCategory" class="move-select" >
-                      <option value="">카테고리 선택</option>
-                        {% for item in move_category_options %}
-                        <option value="{{ item.id }}">
-                            {{ item.label }}
-                        </option>
-                    {% endfor %}
-            </select>
-            
- 
-        </div>
-
-        <div class="button-group">
-            <button onclick="moveSelectedPhotos()" class="btn-move-confirm">이동</button>
-            <button onclick="deleteSelectedPhotos()" class="btn-delete-confirm" title="휴지통으로 이동">
-                <i class="fa-solid fa-trash-can"></i>
-            </button>
-            <button onclick="exitEditMode()" class="btn-move-cancel">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-    </div>
-</div>
-
-
-
-<div class="gallery-grid">
-    {% for photo in photos %}
-        <div class="photo-card" data-photo-id="{{ photo.id }}" style="position: relative;">
-            
-            <button class="bookmark-btn" 
-                    data-photo-id="{{ photo.id }}" 
-                    onclick="toggleBookmark(this)"
-                    style="position: absolute; top: 10px; right: 10px; z-index: 10; background: none; border: none; cursor: pointer;">
-                {% if photo.is_bookmarked %}
-                    <i class="fa-solid fa-bookmark" style="color: #ff9f43; font-size: 20px;"></i>
-                {% else %}
-                    <i class="fa-regular fa-bookmark" style="color: white; font-size: 20px; filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));"></i>
-                {% endif %}
-            </button>
-
-            <div class="edit-checkbox-wrapper" 
-                 style="display: none; position: absolute; top: 10px; right: 10px; z-index: 15;">
-                <input type="checkbox" class="photo-select-checkbox" value="{{ photo.id }}" 
-                       style="width: 22px; height: 22px; cursor: pointer; accent-color: #007bff; margin: 0; vertical-align: top;">
-            </div>
-
-            <a href="{% url 'gallery:photo_detail' photo.id %}">
-                <img src="{{ photo.image.url }}" class="photo-img" alt="영수증 사진">
-            </a>
-            <div class="photo-info">
-                <span class="photo-category" style="font-size: 13px; font-weight: 600; color: #007bff;">
-                    {{ photo.category.name|default:"미분류" }}
-                </span>
-            </div>
-        </div>
-    {% empty %}
-        <div style="grid-column: 1/-1; text-align: center; padding: 50px; color: #999;">
-            {% if query %}
-                <i class="fa-solid fa-magnifying-glass" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>
-                '<strong>{{ query }}</strong>'에 대한 검색 결과가 없습니다.
-            {% else %}
-                조건에 맞는 사진이 없습니다.
-            {% endif %}
-        </div>
-    {% endfor %}
-</div>
-
-<!-- ✅ DnD 업로드 모달 -->
-<div id="dndUploadModal" class="dnd-modal" style="display:none;">
-  <div class="dnd-backdrop" onclick="closeDragDropUpload()"></div>
-
-  <div class="dnd-panel" role="dialog" aria-modal="true" aria-label="드래그 앤 드롭 업로드">
-    <div class="dnd-header">
-      <h3>사진 추가</h3>
-      <button type="button" class="dnd-close" onclick="closeDragDropUpload()">✕</button>
-    </div>
-
-    <div id="dndDropzone" class="dnd-dropzone">
-      <div class="dnd-title">여기로 드래그 & 드롭</div>
-      <div class="dnd-sub">여러 장 / 폴더째 업로드 가능</div>
-
-      <div class="dnd-actions">
-        <button type="button" class="dnd-btn" onclick="document.getElementById('dndFileInput').click()">파일 선택</button>
-        <button type="button" class="dnd-btn dnd-btn-outline" onclick="document.getElementById('dndFolderInput').click()">폴더 선택</button>
-      </div>
-
-      <div id="dndStatus" class="dnd-status" style="display:none;"></div>
-    </div>
-
-    <!-- 숨김 input -->
-    <input id="dndFileInput" type="file" multiple accept="image/*" style="display:none;">
-    <input id="dndFolderInput" type="file" multiple webkitdirectory directory style="display:none;">
-  </div>
-</div>
-
 <script>
 const CSRF_TOKEN = "{{ csrf_token }}";
-const API_BASE = '/api/v1/photos';
+const API_BASE = "/api/v1/photos";
 let importJobId = null;
 let importSessionId = null;
 
 let sessionPollingInterval = null;
 let importPollingInterval = null;
 
-document.addEventListener('DOMContentLoaded', function() {
-    const toggle = document.getElementById('sidebarToggle');
-    const sidebar = document.getElementById('filterSidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const close = document.getElementById('sidebarClose');
+document.addEventListener("DOMContentLoaded", function() {
+  const toggle = document.getElementById("sidebarToggle");
+  const sidebar = document.getElementById("filterSidebar");
+  const overlay = document.getElementById("sidebarOverlay");
+  const close = document.getElementById("sidebarClose");
 
-    if (toggle) {
-        toggle.addEventListener('click', () => {
-            sidebar.classList.add('active');
-            overlay.classList.add('active');
-        });
-    }
+  if (toggle) {
+    toggle.addEventListener("click", () => {
+      sidebar.classList.add("open");
+      overlay.classList.add("show");
+    });
+  }
 
-    if (close || overlay) {
-        [close, overlay].forEach(el => el.addEventListener('click', () => {
-            sidebar.classList.remove('active');
-            overlay.classList.remove('active');
-        }));
-    }
+  if (close) {
+    close.addEventListener("click", () => {
+      sidebar.classList.remove("open");
+      overlay.classList.remove("show");
+    });
+  }
+
+  if (overlay) {
+    overlay.addEventListener("click", () => {
+      sidebar.classList.remove("open");
+      overlay.classList.remove("show");
+    });
+  }
 });
 
-// 북마크 상태 실시간 토글 함수
-async function toggleBookmark(button) {
-    const photoId = button.getAttribute('data-photo-id');
-    const icon = button.querySelector('i');
-    
-    try {
-        // ⚠️ API 경로는 나영님의 urls.py 설정에 따라 수정이 필요할 수 있습니다.
-        const response = await fetch(`/gallery/photos/${photoId}/bookmark/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}', // 장고 CSRF 토큰 전달
-                'Content-Type': 'application/json'
-            }
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            // 서버 응답 결과에 따라 아이콘과 스타일 실시간 변경
-            if (data.is_bookmarked) {
-                // 북마크 활성화: 채워진 노란색 아이콘
-                icon.className = 'fa-solid fa-bookmark';
-                icon.style.color = '#ff9f43';
-                icon.style.filter = 'none';
-            } else {
-                // 북마크 해제: 비어있는 흰색 테두리 아이콘
-                icon.className = 'fa-regular fa-bookmark';
-                icon.style.color = 'white';
-                icon.style.filter = 'drop-shadow(0 0 2px rgba(0,0,0,0.5))';
-            }
-        } else {
-            alert('북마크 처리에 실패했습니다: ' + (data.message || '알 수 없는 오류'));
-        }
-    } catch (error) {
-        console.error('Bookmark error:', error);
-        alert('서버와 통신 중 오류가 발생했습니다.');
-    }
-}
-
 function showProgress(text) {
-    document.getElementById('importProgress').style.display = 'block';
-    document.getElementById('importStatus').textContent = text;
+  document.getElementById("importProgress").style.display = "block";
+  document.getElementById("importStatus").textContent = text;
 }
 
 function stopIntervals() {
-    if (sessionPollingInterval) clearInterval(sessionPollingInterval);
-    if (importPollingInterval) clearInterval(importPollingInterval);
-    sessionPollingInterval = null;
-    importPollingInterval = null;
+  if (sessionPollingInterval) clearInterval(sessionPollingInterval);
+  if (importPollingInterval) clearInterval(importPollingInterval);
+  sessionPollingInterval = null;
+  importPollingInterval = null;
 }
 
+// ✅ 구글 Picker import (세션 생성 → picker 열기 → 선택 감지 → confirm → celery 진행 폴링)
 async function importGooglePhotos() {
-    stopIntervals();
+  stopIntervals();
 
-    try {
-        const statusRes = await fetch(`${API_BASE}/google/status`, {
-            headers: { 'Authorization': `Token ${localStorage.getItem('auth_token')}` }
-        });
-        const statusData = await statusRes.json();
+  try {
+    // 1) 연동 상태 확인
+    const statusData = await fetchJsonSafe(`${API_BASE}/google/status`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" }
+    });
 
-        if (!statusData.data || !statusData.data.connected) {
-            if (confirm('구글 포토 연동이 필요합니다. 연동하시겠습니까?')) {
-                const authRes = await fetch(`${API_BASE}/google/authorize`, {
-                    headers: { 'Authorization': `Token ${localStorage.getItem('auth_token')}` }
-                });
-                const authData = await authRes.json();
-
-                if (authData.data && authData.data.authUrl) {
-                    window.location.href = authData.data.authUrl;
-                    return;
-                }
-            }
-            return;
-        }
-
-        showProgress('Picker 여는 중...');
-
-        const importRes = await fetch(`${API_BASE}/import/google`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Token ${localStorage.getItem('auth_token')}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ dedupe: true })
+    if (!statusData.data || !statusData.data.connected) {
+      if (confirm("구글 포토 연동이 필요합니다. 연동하시겠습니까?")) {
+        const authData = await fetchJsonSafe(`${API_BASE}/google/authorize`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
         });
 
-        const importData = await importRes.json();
-
-        if (!importData.data || !importData.data.jobId || !importData.data.pickerUri || !importData.data.sessionId) {
-            throw new Error(importData.message || 'Picker 세션 생성 실패');
+        if (authData.data && authData.data.authUrl) {
+          window.location.href = authData.data.authUrl;
+          return;
         }
-
-        importJobId = importData.data.jobId;
-        importSessionId = importData.data.sessionId;
-
-        const pickerUri = importData.data.pickerUri;
-
-        window.open(pickerUri, '_blank');
-
-        showProgress('🖱️ 구글 포토에서 사진을 선택하고 창을 닫아. 선택 완료 확인 중...');
-        startSessionPolling();
-
-    } catch (error) {
-        console.error('Import error:', error);
-        alert('구글 포토 불러오기 실패: ' + error.message);
-        stopIntervals();
+        alert("인증 URL 생성에 실패했습니다.");
+      }
+      return;
     }
+
+    showProgress("Picker 여는 중...");
+
+    // 2) picker session 생성(backend)
+    const importData = await fetchJsonSafe(`${API_BASE}/import/google`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dedupe: true })
+    });
+
+    if (!importData.data || !importData.data.jobId || !importData.data.pickerUri || !importData.data.sessionId) {
+      throw new Error(importData.message || "Picker 세션 생성 실패");
+    }
+
+    importJobId = importData.data.jobId;
+    importSessionId = importData.data.sessionId;
+
+    // 3) picker 새 탭 열기
+    window.open(importData.data.pickerUri, "_blank");
+
+    showProgress("🖱️ 구글 포토에서 사진을 선택하고 창을 닫아. 선택 완료 확인 중...");
+    startSessionPolling();
+
+  } catch (error) {
+    console.error("Import error:", error);
+    alert("구글 포토 불러오기 실패: " + error.message);
+    stopIntervals();
+  }
 }
 
 function startSessionPolling() {
-    if (sessionPollingInterval) clearInterval(sessionPollingInterval);
+  if (sessionPollingInterval) clearInterval(sessionPollingInterval);
 
-    sessionPollingInterval = setInterval(async () => {
-        try {
-            const res = await fetch(`${API_BASE}/import/google/session/${importSessionId}`, {
-                headers: { 'Authorization': `Token ${localStorage.getItem('auth_token')}` }
-            });
+  sessionPollingInterval = setInterval(async () => {
+    try {
+      const data = await fetchJsonSafe(`${API_BASE}/import/google/session/${importSessionId}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      });
 
-            const data = await res.json();
-            if (!data.data || !data.data.session) return;
+      if (!data.data || !data.data.session) return;
 
-            const session = data.data.session;
+      const session = data.data.session;
 
-            // 선택 완료되면 backend confirm 호출
-            if (session.mediaItemsSet === true) {
-                clearInterval(sessionPollingInterval);
-                sessionPollingInterval = null;
+      // 선택 완료되면 backend confirm 호출
+      if (session.mediaItemsSet === true) {
+        clearInterval(sessionPollingInterval);
+        sessionPollingInterval = null;
 
-                showProgress('✅ 선택 완료! 다운로드 시작하는 중...');
-                await confirmSelectionAndStartImport();
-            }
-
-        } catch (error) {
-            console.error('Session polling error:', error);
-        }
-    }, 2000);
+        showProgress("✅ 선택 완료! 다운로드 시작하는 중...");
+        await confirmSelectionAndStartImport();
+      }
+    } catch (error) {
+      console.error("Session polling error:", error);
+    }
+  }, 2000);
 }
 
 async function confirmSelectionAndStartImport() {
-    const res = await fetch(`${API_BASE}/import/google/confirm`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Token ${localStorage.getItem('auth_token')}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            jobId: importJobId,
-            sessionId: importSessionId,
-            dedupe: true
-        })
-    });
+  const data = await fetchJsonSafe(`${API_BASE}/import/google/confirm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jobId: importJobId,
+      sessionId: importSessionId,
+      dedupe: true
+    })
+  });
 
-    const data = await res.json();
-    if (!data.success) {
-        throw new Error(data.message || 'Import confirm 실패');
-    }
+  if (!data.success) {
+    throw new Error(data.message || "Import confirm 실패");
+  }
 
-    showProgress('⬇️ 선택한 사진 다운로드 중...');
-    startImportPolling();
+  showProgress("⬇️ 선택한 사진 다운로드 중...");
+  startImportPolling();
 }
 
 function startImportPolling() {
-    if (importPollingInterval) clearInterval(importPollingInterval);
+  if (importPollingInterval) clearInterval(importPollingInterval);
 
-    importPollingInterval = setInterval(async () => {
-        try {
-            const res = await fetch(`${API_BASE}/import/jobs/${importJobId}`, {
-                headers: { 'Authorization': `Token ${localStorage.getItem('auth_token')}` }
-            });
-
-            const data = await res.json();
-            if (!data.data) return;
-
-            const { status, progress } = data.data;
-            const { total, done, skipped, failed } = progress;
-
-            const percentage = total > 0 ? Math.round((done + skipped + failed) / total * 100) : 0;
-            document.getElementById('progressBar').style.width = percentage + '%';
-            document.getElementById('progressText').textContent = `${done} / ${total} (건너뜀: ${skipped}, 실패: ${failed})`;
-
-            if (status === 'DONE') {
-                document.getElementById('importStatus').textContent = '✅ 사진 가져오기 완료!';
-                clearInterval(importPollingInterval);
-                importPollingInterval = null;
-
-                setTimeout(() => location.reload(), 1500);
-
-            } else if (status === 'FAILED') {
-                document.getElementById('importStatus').textContent = '❌ 사진 가져오기 실패';
-                clearInterval(importPollingInterval);
-                importPollingInterval = null;
-            } else if (status === 'PICKING') {
-                document.getElementById('importStatus').textContent = '🖱️ 사진 선택 중...';
-            } else {
-                document.getElementById('importStatus').textContent = '⬇️ 다운로드 진행 중...';
-            }
-
-        } catch (error) {
-            console.error('Import polling error:', error);
-        }
-    }, 2000);
-}
-
-async function uploadPhotos(event) {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    const formData = new FormData();
-    for (let file of files) {
-        formData.append('files', file);
-    }
-
+  importPollingInterval = setInterval(async () => {
     try {
-        const res = await fetch(`${API_BASE}/upload`, {
-            method: 'POST',
-            headers: { 'Authorization': `Token ${localStorage.getItem('auth_token')}` },
-            body: formData
-        });
+      const data = await fetchJsonSafe(`${API_BASE}/import/jobs/${importJobId}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      });
 
-        const data = await res.json();
+      if (!data.data) return;
 
-        if (data.success) {
-            alert(`${data.data.created.length}개 사진 업로드 완료!`);
-            location.reload();
-        } else {
-            alert('업로드 실패: ' + data.message);
-        }
+      const { status, progress } = data.data;
+      const { total, done, skipped, failed } = progress;
+
+      const percentage = total > 0 ? Math.round(((done + skipped + failed) / total) * 100) : 0;
+      document.getElementById("progressBar").style.width = percentage + "%";
+      document.getElementById("progressText").textContent = `${done} / ${total} (건너뜀: ${skipped}, 실패: ${failed})`;
+
+      if (status === "DONE") {
+        document.getElementById("importStatus").textContent = "✅ 사진 가져오기 완료!";
+        clearInterval(importPollingInterval);
+        importPollingInterval = null;
+        setTimeout(() => location.reload(), 1500);
+      } else if (status === "FAILED") {
+        document.getElementById("importStatus").textContent = "❌ 사진 가져오기 실패";
+        clearInterval(importPollingInterval);
+        importPollingInterval = null;
+      } else if (status === "PICKING") {
+        document.getElementById("importStatus").textContent = "🖱️ 사진 선택 중...";
+      } else {
+        document.getElementById("importStatus").textContent = "⬇️ 다운로드 진행 중...";
+      }
+
     } catch (error) {
-        console.error('Upload error:', error);
-        alert('업로드 실패: ' + error.message);
+      console.error("Import polling error:", error);
     }
+  }, 2000);
 }
 
-async function classifyPhotos() {
-    if (!confirm("미분류(분류 전) 사진을 분류할까요?")) return;
-
-    const res = await fetch(`${API_BASE}/classify`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": CSRF_TOKEN,
-        },
-        credentials: "same-origin",
-        body: JSON.stringify({ limit: 200 }),
-    });
-
-    const data = await res.json();
-
-    if (data.success) {
-        alert(`✅ 분류 완료: ${data.data.ok}개 (실패: ${data.data.fail}개)`);
-        location.reload();
-    } else {
-        alert("❌ 분류 실패: " + (data.message || "unknown error"));
-    }
-}
-
-function openDragDropUpload() {
-  document.getElementById('dndUploadModal').style.display = 'block';
-}
-
-function closeDragDropUpload() {
-  document.getElementById('dndUploadModal').style.display = 'none';
-  setDnDStatus('');
-}
-
-function setDnDStatus(text) {
-  const el = document.getElementById('dndStatus');
-  if (!el) return;
-  if (!text) { el.style.display = 'none'; el.textContent = ''; return; }
-  el.style.display = 'block';
-  el.textContent = text;
-}
-
-// ✅ uploadPhotos(event)와 동일한 방식으로 업로드(단, File[] 직접 받음)
-async function uploadFileArray(files) {
+// ✅ 직접 업로드
+async function uploadPhotos(event) {
+  const files = event.target.files;
   if (!files || files.length === 0) return;
 
-  // 이미지 파일만(원하면 필터 제거 가능)
-  const imageFiles = files.filter(f => f && f.type && f.type.startsWith('image/'));
-  if (imageFiles.length === 0) {
-    alert('이미지 파일이 없어요!');
-    return;
-  }
-
-  setDnDStatus(`감지됨: ${imageFiles.length}개 → 업로드 중...`);
-
   const formData = new FormData();
-  for (const f of imageFiles) formData.append('files', f);
+  for (let file of files) formData.append("files", file);
 
   try {
-    const res = await fetch(`${API_BASE}/upload`, {
-      method: 'POST',
-      headers: { 'Authorization': `Token ${localStorage.getItem('auth_token')}` },
+    const data = await fetchJsonSafe(`${API_BASE}/upload`, {
+      method: "POST",
       body: formData
     });
 
-    const data = await res.json();
     if (data.success) {
       alert(`${data.data.created.length}개 사진 업로드 완료!`);
-      closeDragDropUpload();
       location.reload();
     } else {
-      alert('업로드 실패: ' + (data.message || 'unknown error'));
-      setDnDStatus('업로드 실패: ' + (data.message || 'unknown error'));
+      alert("업로드 실패: " + (data.message || "알 수 없는 오류"));
     }
-  } catch (e) {
-    console.error(e);
-    alert('업로드 실패: ' + e.message);
-    setDnDStatus('업로드 실패: ' + e.message);
+  } catch (error) {
+    console.error("Upload error:", error);
+    alert("업로드 실패: " + error.message);
+  } finally {
+    // 같은 파일을 다시 선택해도 change 이벤트가 뜨도록 value reset
+    try { event.target.value = ""; } catch (e) {}
   }
 }
 
-// ✅ 폴더 드래그&드롭 지원(Chrome/Edge에서 잘 됨)
-async function getFilesFromDataTransfer(dt) {
-  const items = dt.items;
+// ✅ 분류(미분류 사진)
+async function classifyPhotos() {
+  if (!confirm("미분류(분류 전) 사진을 분류할까요?")) return;
 
-  // 폴더 포함 드롭이면 webkitGetAsEntry 기반으로 재귀 탐색
-  if (items && items.length && items[0].webkitGetAsEntry) {
-    const files = [];
+  try {
+    const data = await fetchJsonSafe(`${API_BASE}/classify`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": CSRF_TOKEN
+      },
+      credentials: "same-origin",
+      body: JSON.stringify({ limit: 1000 })
+    });
 
-    async function readEntry(entry) {
-      if (entry.isFile) {
-        return new Promise((resolve) => {
-          entry.file((file) => { files.push(file); resolve(); }, () => resolve());
-        });
-      }
-      if (entry.isDirectory) {
-        const reader = entry.createReader();
-        return new Promise((resolve) => {
-          const readBatch = () => {
-            reader.readEntries(async (entries) => {
-              if (!entries || entries.length === 0) return resolve();
-              for (const e of entries) await readEntry(e);
-              readBatch();
-            }, () => resolve());
-          };
-          readBatch();
-        });
-      }
+    if (data.success) {
+      alert("분류 요청이 완료되었습니다.");
+      location.reload();
+    } else {
+      alert("분류 실패: " + (data.message || "알 수 없는 오류"));
     }
-
-    for (const it of items) {
-      const entry = it.webkitGetAsEntry?.();
-      if (entry) await readEntry(entry);
-    }
-
-    return files;
+  } catch (error) {
+    console.error("Classify error:", error);
+    alert("분류 실패: " + error.message);
   }
-
-  // 폴더가 아닌 일반 파일 드롭
-  return Array.from(dt.files || []);
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-  const dropzone = document.getElementById('dndDropzone');
-  const fileInput = document.getElementById('dndFileInput');
-  const folderInput = document.getElementById('dndFolderInput');
-
-  // 파일 선택 업로드
-  fileInput?.addEventListener('change', async (e) => {
-    const files = Array.from(e.target.files || []);
-    await uploadFileArray(files);
-    e.target.value = '';
-  });
-
-  // 폴더 선택 업로드(webkitdirectory)
-  folderInput?.addEventListener('change', async (e) => {
-    const files = Array.from(e.target.files || []);
-    await uploadFileArray(files);
-    e.target.value = '';
-  });
-
-  // 드래그 이벤트 기본 방지
-  const stop = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
-
-  dropzone?.addEventListener('dragenter', (e) => { stop(e); dropzone.classList.add('is-dragover'); });
-  dropzone?.addEventListener('dragover',  (e) => { stop(e); dropzone.classList.add('is-dragover'); });
-  dropzone?.addEventListener('dragleave', (e) => { stop(e); dropzone.classList.remove('is-dragover'); });
-
-  dropzone?.addEventListener('drop', async (e) => {
-    stop(e);
-    dropzone.classList.remove('is-dragover');
-
-    setDnDStatus('드롭된 파일/폴더 분석 중...');
-    const files = await getFilesFromDataTransfer(e.dataTransfer);
-    await uploadFileArray(files);
-  });
-
-  // ESC 닫기
-  window.addEventListener('keydown', (e) => {
-    const modal = document.getElementById('dndUploadModal');
-    if (e.key === 'Escape' && modal && modal.style.display === 'block') closeDragDropUpload();
-  });
-});
 </script>
-
-<script src="{% static 'js/photo_list.js' %}"></script>
-{% endblock %}
