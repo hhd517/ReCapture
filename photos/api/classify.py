@@ -1,77 +1,35 @@
 # photos/api/classify.py
 
-from django.db.models import Q
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from gallery.models import Photo, Category  # ✅ 확정!
-
-# ✅ 너희 ensemble import 경로에 맞춰 수정 (파일 위치가 정확히 이 경로면 그대로)
-from classification.services.ensemble_classifier import EnsembleClassifier
-
-
-LABEL_TO_CATEGORY_NAME = {
-    "finance": "결제/예약",
-    "study_note": "학습/노트",
-    "info": "정보",
-    "others": "기타",
-}
+# ✅ Celery task만 호출 (웹 프로세스에서 모델 로딩 금지)
+from photos.tasks.classify_photos import classify_unclassified_task
 
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def classify_unclassified(request):
+    """
+    ✅ 비동기 분류 시작 API
+    - 웹 요청에서는 절대 모델을 로드/다운로드하지 않음
+    - Celery background worker가 실제 분류 수행
+    """
     user = request.user
     limit = int(request.data.get("limit", 200))
 
-    # '분류 전' 카테고리 (없으면 생성)
-    unclassified_cat, _ = Category.objects.get_or_create(user=user, name="분류 전")
+    task = classify_unclassified_task.delay(user.id, limit)
 
-    # ✅ 분류 전(또는 category null) 사진만
-    qs = (
-        Photo.objects.filter(user=user)
-        .filter(Q(category=unclassified_cat) | Q(category__isnull=True))
-        .order_by("id")[:limit]
+    return Response(
+        {
+            "success": True,
+            "data": {
+                "queued": True,
+                "task_id": task.id,
+                "limit": limit,
+                "message": "분류 작업이 큐에 등록되었습니다. 잠시 후 결과가 반영됩니다.",
+            },
+        },
+        status=202,
     )
-
-    if qs.count() == 0:
-        return Response({"success": True, "data": {"ok": 0, "fail": 0, "results": []}})
-
-    clf = EnsembleClassifier()
-
-    ok, fail = 0, 0
-    results = []
-
-    for photo in qs:
-        try:
-            img_path = photo.image.path
-
-            # ✅ 너희 앙상블은 classify(image_path)로 1장 분류
-            out = clf.classify(img_path)
-            label = out.get("category")
-
-            if not label:
-                raise ValueError("EnsembleClassifier returned empty category")
-
-            category_name = LABEL_TO_CATEGORY_NAME.get(label, "기타")
-            target_cat, _ = Category.objects.get_or_create(user=user, name=category_name)
-
-            photo.category = target_cat
-            photo.save(update_fields=["category"])
-
-            ok += 1
-            results.append(
-                {
-                    "photo_id": photo.id,
-                    "label": label,
-                    "category": category_name,
-                    "confidence": out.get("confidence"),
-                }
-            )
-
-        except Exception as e:
-            fail += 1
-            results.append({"photo_id": photo.id, "error": str(e)})
-
-    return Response({"success": True, "data": {"ok": ok, "fail": fail, "results": results}})
