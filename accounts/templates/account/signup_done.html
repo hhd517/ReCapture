@@ -5,7 +5,7 @@
     <h2>회원가입이 완료되었습니다! 🎉</h2>
     <p>이제 로그인해서 Re:Capture를 시작해볼까요?</p>
 
-    <a class="done-btn" href="/accounts/login/">로그인 페이지로 이동</a>
+    <a class="done-btn" href="/auth/login/">로그인 페이지로 이동</a>
 
     <div class="done-sub">
       <span id="sec">3</span>초 후 자동으로 로그인 페이지로 이동합니다.
@@ -50,7 +50,7 @@
     el.textContent = String(s);
     if (s <= 0) {
       clearInterval(timer);
-      window.location.href = "/accounts/login/";
+      window.location.href = "/auth/login/";
     }
   }, 1000);
 </script>
