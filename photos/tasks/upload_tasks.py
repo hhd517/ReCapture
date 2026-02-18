@@ -1,5 +1,3 @@
-# photos/tasks/upload_tasks.py
-
 from celery import shared_task
 from io import BytesIO
 from PIL import Image, ImageOps
@@ -12,52 +10,65 @@ from photos.services.upload_service import (
     _extract_exif_taken_at,
 )
 
-@shared_task
-def process_uploaded_photo(photo_id: int) -> bool:
-    """
-    업로드 후처리(무거운 작업):
-    - storage에서 bytes 다시 읽기
-    - PIL 디코딩 + EXIF 회전 보정
-    - taken_at/width/height 저장
-    - SHA256 + (p/d/a)hash 저장
-    - exact duplicate 마킹(file_hash 기반)
-    """
-    photo = Photo.objects.get(id=photo_id)
 
-    storage_name = photo.image.name  # ImageField니까 name이 key
-    data = read_storage_bytes(storage_name)
+@shared_task(bind=True, max_retries=3, default_retry_delay=10)
+def process_uploaded_photo(self, photo_id: int) -> bool:
+    try:
+        photo = Photo.objects.get(id=photo_id)
+    except Photo.DoesNotExist:
+        return False
 
-    image = Image.open(BytesIO(data))
-    image = ImageOps.exif_transpose(image)
+    # ✅ 이미 완료면 재처리 안 함
+    if photo.processing_status == "DONE":
+        return True
 
-    # 메타
-    photo.width, photo.height = image.size
-    photo.taken_at = _extract_exif_taken_at(image)
+    # 시작 상태
+    Photo.objects.filter(id=photo_id).update(processing_status="PROCESSING", processing_error=None)
 
-    # 해시
-    # - upload API 단계에서 file_hash를 이미 채워두는 경우가 많음
-    # - 그래도 혹시 모를 케이스(구글 import/이전 데이터)에서는 계산해서 채움
-    if not photo.file_hash:
-        import hashlib
-        sha256 = hashlib.sha256()
-        sha256.update(data)
-        photo.file_hash = sha256.hexdigest()
+    try:
+        storage_name = photo.image.name
+        data = read_storage_bytes(storage_name)
 
-    hashes = _calculate_image_hashes(image.convert("RGB"))
-    photo.phash = hashes["phash"]
-    photo.dhash = hashes["dhash"]
-    photo.ahash = hashes["ahash"]
+        image = Image.open(BytesIO(data))
+        image = ImageOps.exif_transpose(image)
 
-    photo.save(update_fields=[
-        "width", "height", "taken_at",
-        "file_hash", "phash", "dhash", "ahash",
-        "updated_at"
-    ])
+        width, height = image.size
+        taken_at = _extract_exif_taken_at(image)
 
-    # exact duplicate 마킹
-    DeduplicationService.check_exact_duplicate_and_mark(
-        user=photo.user,
-        photo=photo,
-    )
+        hashes = _calculate_image_hashes(image.convert("RGB"))
 
-    return True
+        photo.width = width
+        photo.height = height
+        photo.taken_at = taken_at
+        photo.phash = hashes["phash"]
+        photo.dhash = hashes["dhash"]
+        photo.ahash = hashes["ahash"]
+
+        if not photo.file_hash:
+            import hashlib
+            sha256 = hashlib.sha256()
+            sha256.update(data)
+            photo.file_hash = sha256.hexdigest()
+
+        photo.processing_status = "DONE"
+        photo.processing_error = None
+        photo.save(update_fields=[
+            "width", "height", "taken_at",
+            "file_hash", "phash", "dhash", "ahash",
+            "processing_status", "processing_error",
+            "updated_at",
+        ])
+
+        DeduplicationService.check_exact_duplicate_and_mark(
+            user=photo.user,
+            photo=photo,
+        )
+
+        return True
+
+    except Exception as e:
+        Photo.objects.filter(id=photo_id).update(
+            processing_status="FAILED",
+            processing_error=str(e)[:2000],
+        )
+        raise self.retry(exc=e)
