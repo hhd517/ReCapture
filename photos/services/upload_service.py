@@ -9,6 +9,7 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import UploadedFile
 
+
 from PIL import Image, ExifTags, ImageOps
 import imagehash
 
@@ -193,3 +194,53 @@ def save_uploaded_file(user, uploaded_file: UploadedFile) -> Dict:
         "dhash": image_hashes["dhash"],
         "ahash": image_hashes["ahash"],
     }
+
+def save_raw_uploaded_file(user, uploaded_file: UploadedFile) -> Dict:
+    """
+    ✅ 성능 개선용: '저장만' 한다.
+    - PIL ❌
+    - 해시 ❌
+    - 썸네일 ❌
+    """
+    user_id = user.id
+    original_name = getattr(uploaded_file, "name", "uploaded")
+
+    try:
+        file_bytes = uploaded_file.read()
+        if hasattr(uploaded_file, "seek"):
+            uploaded_file.seek(0)
+    except Exception as e:
+        raise ValueError(f"FILE_READ_FAILED: {e}")
+
+    if not file_bytes:
+        raise ValueError("EMPTY_FILE")
+
+    # 원본 포맷 유지(그대로 업로드). 키만 uuid로.
+    unique_name = f"{uuid.uuid4().hex}.jpg"
+    photo_key = f"photos/{user_id}/{unique_name}"
+    saved_name = None
+    try:
+        saved_name = default_storage.save(photo_key, ContentFile(file_bytes))
+        photo_url = default_storage.url(saved_name)
+    except Exception as e:
+        try:
+            if saved_name:
+                default_storage.delete(saved_name)
+        except Exception:
+            pass
+        raise ValueError(f"STORAGE_SAVE_FAILED: {e}")
+
+    return {
+        "filename": original_name,
+        "storage_name": saved_name,   # Photo.image에 저장할 key
+        "url": photo_url,
+        "file_size": len(file_bytes),
+    }
+
+
+def read_storage_bytes(storage_name: str) -> bytes:
+    """
+    ✅ 비동기 task에서 storage(Cloudinary)로부터 bytes 다시 읽기
+    """
+    with default_storage.open(storage_name, "rb") as f:
+        return f.read()

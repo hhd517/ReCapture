@@ -534,27 +534,50 @@ async function uploadPhotos(event) {
 }
 
 async function classifyPhotos() {
-    if (!confirm("미분류(분류 전) 사진을 분류할까요?")) return;
+  if (!confirm("미분류(분류 전) 사진을 분류할까요?")) return;
 
+  try {
     const res = await fetch(`${API_BASE}/classify`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": CSRF_TOKEN,
-        },
-        credentials: "same-origin",
-        body: JSON.stringify({ limit: 200 }),
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": CSRF_TOKEN,
+      },
+      credentials: "same-origin",
+      body: JSON.stringify({ limit: 200 }),
     });
 
     const data = await res.json();
 
-    if (data.success) {
-        alert(`✅ 분류 완료: ${data.data.ok}개 (실패: ${data.data.fail}개)`);
-        location.reload();
-    } else {
-        alert("❌ 분류 실패: " + (data.message || "unknown error"));
+    if (!data.success) {
+      alert("❌ 분류 실패: " + (data.message || "unknown error"));
+      return;
     }
+
+    // ✅ 배포에서는 202(비동기 시작)이라 완료 카운트가 즉시 안 올 수 있음
+    const payload = data.data ?? data;
+
+    // (혹시 로컬처럼 완료 카운트가 오는 경우도 커버)
+    const ok = payload.ok ?? payload.classified_count ?? payload.success_count;
+    const fail = payload.fail ?? payload.failed_count ?? payload.fail_count;
+
+    if (typeof ok === "number" || typeof fail === "number") {
+      alert(`✅ 분류 완료: ${ok ?? 0}개 (실패: ${fail ?? 0}개)`);
+      location.reload();
+      return;
+    }
+
+    // ✅ 기본(배포): "시작" 메시지
+    alert("✅ 분류를 시작했어요!\n잠시 후 새로고침하면 결과가 반영됩니다.");
+    // 자동 새로고침(원하면 시간 조절)
+    setTimeout(() => location.reload(), 2000);
+
+  } catch (e) {
+    console.error(e);
+    alert("❌ 분류 요청 중 오류가 발생했습니다.");
+  }
 }
+
 
 function openDragDropUpload() {
   document.getElementById('dndUploadModal').style.display = 'block';
