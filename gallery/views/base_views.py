@@ -1,16 +1,28 @@
+# gallery/views/base_views.py
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from gallery.models import Photo, UserSetting, Category
-from django.db.models import Q
+from django.db.models import Q, Case, When, IntegerField, Value
 
 
 def build_move_category_options(user):
-    # 대분류
+    # 대분류 (원하는 순서로 고정)
     roots = (
         Category.objects
         .filter(user=user, parent=None)
-        .exclude(name="분류 전")   # ← 너희 키에 맞게 수정
-        .order_by("name")
+        .exclude(name="분류 전")   # 이동 대상에서 분류 전 제외(기존 로직 유지)
+        .annotate(
+            sort_order=Case(
+                When(name="결제/예약", then=Value(1)),
+                When(name="학습/노트", then=Value(2)),
+                When(name="정보", then=Value(3)),
+                When(name="기타", then=Value(4)),
+                default=Value(999),
+                output_field=IntegerField(),
+            )
+        )
+        .order_by("sort_order", "id")
     )
 
     # 소분류 (내가 만든 폴더)
@@ -30,13 +42,14 @@ def build_move_category_options(user):
 
     return options
 
+
 @login_required
 @login_required
 def settings_view(request):
     # 설정 객체가 없으면 생성
     setting, created = UserSetting.objects.get_or_create(user=request.user)
     categories = Category.objects.filter(user=request.user)
-    
+
     # 구글 포토 연동 상태 확인
     from photos.models import GoogleCredential
     google_connected = False
@@ -59,7 +72,7 @@ def settings_view(request):
         setting.auto_trash_days = int(request.POST.get('auto_trash_days', 30))
         setting.trash_expiry_days = int(request.POST.get('trash_expiry', 30))
         # setting.auto_trash_categories.set(request.POST.getlist('trash_cats'))
-        
+
         setting.save()
         return redirect('gallery:settings')
 
@@ -70,12 +83,28 @@ def settings_view(request):
         'google_email': google_email,
     })
 
+
 @login_required(login_url='/accounts/login/')
 def photo_list(request):
     photos = Photo.objects.filter(user=request.user, is_trashed=False)
-    
-    # 대분류 카테고리만 가져오기 (parent가 없는 것들)
-    categories = Category.objects.filter(user=request.user, parent=None)
+
+    # 대분류 카테고리만 가져오기 (parent가 없는 것들) + 원하는 순서로 고정
+    categories = (
+        Category.objects
+        .filter(user=request.user, parent=None)
+        .annotate(
+            sort_order=Case(
+                When(name="결제/예약", then=Value(1)),
+                When(name="학습/노트", then=Value(2)),
+                When(name="정보", then=Value(3)),
+                When(name="기타", then=Value(4)),
+                When(name="분류 전", then=Value(5)),
+                default=Value(999),
+                output_field=IntegerField(),
+            )
+        )
+        .order_by("sort_order", "id")
+    )
 
     category_id = request.GET.get('category_id')
     sub_category_id = request.GET.get('sub_category_id')
@@ -88,16 +117,15 @@ def photo_list(request):
     # [검색 기능 추가] 검색어가 있으면 메모(memo) 또는 파일명(filename)에서 검색
     if query:
         photos = photos.filter(
-            Q(memo__icontains=query) | 
+            Q(memo__icontains=query) |
             Q(filename__icontains=query)
         )
-
 
     # 1. 카테고리 필터 적용 로직 개선
     if category_id:
         # 현재 대분류 정보 및 소분류 리스트 가져오기
         sub_categories = Category.objects.filter(user=request.user, parent_id=category_id)
-        
+
         try:
             current_cat = Category.objects.get(id=category_id)
             current_category_name = current_cat.name
@@ -128,6 +156,7 @@ def photo_list(request):
         'is_bookmarked': is_bookmarked == 'true',
         'query': query,
     })
+
 
 @login_required(login_url='/accounts/login/')
 def photo_detail(request, photoid):
