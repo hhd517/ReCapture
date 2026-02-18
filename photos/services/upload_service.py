@@ -1,5 +1,6 @@
 # photos/services/upload_service.py
 
+import os
 import uuid
 import hashlib
 from datetime import datetime
@@ -21,6 +22,28 @@ import imagehash
 def _calculate_sha256_bytes(data: bytes) -> str:
     sha256 = hashlib.sha256()
     sha256.update(data)
+    return sha256.hexdigest()
+
+
+def calculate_sha256_file(uploaded_file: UploadedFile, *, chunk_size: int = 1024 * 1024) -> str:
+    """UploadedFile을 chunk 단위로 읽어서 SHA-256 계산.
+
+    - 메모리 폭증 방지
+    - 계산 후 원래 위치로 seek(0) 시도
+    """
+    sha256 = hashlib.sha256()
+
+    # Django UploadedFile은 chunks() 제공
+    try:
+        for chunk in uploaded_file.chunks(chunk_size=chunk_size):
+            sha256.update(chunk)
+    finally:
+        # 다음 처리를 위해 포인터 원복
+        try:
+            uploaded_file.seek(0)
+        except Exception:
+            pass
+
     return sha256.hexdigest()
 
 
@@ -205,22 +228,18 @@ def save_raw_uploaded_file(user, uploaded_file: UploadedFile) -> Dict:
     user_id = user.id
     original_name = getattr(uploaded_file, "name", "uploaded")
 
-    try:
-        file_bytes = uploaded_file.read()
-        if hasattr(uploaded_file, "seek"):
-            uploaded_file.seek(0)
-    except Exception as e:
-        raise ValueError(f"FILE_READ_FAILED: {e}")
+    # 원본 포맷 최대한 유지: 확장자만 보존 (없으면 .bin)
+    ext = os.path.splitext(original_name)[1].lower()
+    if not ext:
+        ext = ".bin"
 
-    if not file_bytes:
-        raise ValueError("EMPTY_FILE")
-
-    # 원본 포맷 유지(그대로 업로드). 키만 uuid로.
-    unique_name = f"{uuid.uuid4().hex}.jpg"
+    unique_name = f"{uuid.uuid4().hex}{ext}"
     photo_key = f"photos/{user_id}/{unique_name}"
     saved_name = None
+
     try:
-        saved_name = default_storage.save(photo_key, ContentFile(file_bytes))
+        # ✅ bytes로 통째로 읽지 않고 UploadedFile을 그대로 storage에 전달
+        saved_name = default_storage.save(photo_key, uploaded_file)
         photo_url = default_storage.url(saved_name)
     except Exception as e:
         try:
@@ -234,7 +253,7 @@ def save_raw_uploaded_file(user, uploaded_file: UploadedFile) -> Dict:
         "filename": original_name,
         "storage_name": saved_name,   # Photo.image에 저장할 key
         "url": photo_url,
-        "file_size": len(file_bytes),
+        "file_size": getattr(uploaded_file, "size", None),
     }
 
 

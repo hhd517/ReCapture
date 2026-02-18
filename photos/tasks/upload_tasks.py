@@ -8,7 +8,6 @@ from gallery.models import Photo
 from photos.services.deduplication_service import DeduplicationService
 from photos.services.upload_service import (
     read_storage_bytes,
-    _calculate_sha256_bytes,
     _calculate_image_hashes,
     _extract_exif_taken_at,
 )
@@ -36,7 +35,14 @@ def process_uploaded_photo(photo_id: int) -> bool:
     photo.taken_at = _extract_exif_taken_at(image)
 
     # 해시
-    photo.file_hash = _calculate_sha256_bytes(data)
+    # - upload API 단계에서 file_hash를 이미 채워두는 경우가 많음
+    # - 그래도 혹시 모를 케이스(구글 import/이전 데이터)에서는 계산해서 채움
+    if not photo.file_hash:
+        import hashlib
+        sha256 = hashlib.sha256()
+        sha256.update(data)
+        photo.file_hash = sha256.hexdigest()
+
     hashes = _calculate_image_hashes(image.convert("RGB"))
     photo.phash = hashes["phash"]
     photo.dhash = hashes["dhash"]

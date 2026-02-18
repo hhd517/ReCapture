@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
@@ -47,6 +48,19 @@ class Photo(models.Model):
     phash = models.CharField(max_length=16, db_index=True, null=True, blank=True)
     dhash = models.CharField(max_length=16, db_index=True, null=True, blank=True)
     ahash = models.CharField(max_length=16, null=True, blank=True)
+
+    # [중복 관리]
+    # - 동일 파일(SHA-256 동일) 중, 원본 Photo를 가리킴
+    # - 업로드 단계에서 중복을 "막는" 정책이라면 보통 null 유지됨
+    # - 혹시라도 DB에 중복이 들어온 경우(레이스/수동 삽입 등)만 마킹됨
+    duplicate_of = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='duplicates',
+        db_index=True,
+    )
     
     # [분류 및 서비스 정보]
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='photos')
@@ -75,9 +89,22 @@ class Photo(models.Model):
     class Meta:
         db_table = 'combined_photos' # 테이블 이름 고정
         ordering = ['-created_at']
+        constraints = [
+            # "활성" 사진에 대해서만 user+file_hash 중복 업로드 방지
+            # (file_hash는 업로드 시점에 채워야 동작함)
+            models.UniqueConstraint(
+                fields=['user', 'file_hash'],
+                condition=Q(file_hash__isnull=False, is_deleted=False),
+                name='uniq_user_filehash_active',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.filename} ({self.user.username})"
+
+    @property
+    def is_duplicate(self) -> bool:
+        return self.duplicate_of_id is not None
 
     @property
     def expires_at(self):

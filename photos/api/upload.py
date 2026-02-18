@@ -14,7 +14,7 @@ from rest_framework import status
 from gallery.models import Photo, Category
 from photos.serializers.response import APIResponse
 from photos.serializers.photo import PhotoSerializer
-from photos.services.upload_service import save_raw_uploaded_file
+from photos.services.upload_service import save_raw_uploaded_file, calculate_sha256_file
 from photos.tasks import process_uploaded_photo
 
 
@@ -50,22 +50,42 @@ def upload_photos(request):
     )
 
     created = []
+    skipped_duplicates = []
 
     for f in files:
-        # 1) ✅ 원본 저장만 (빠름)
+        # 0) ✅ 업로드 전에 SHA256 계산 → 중복이면 Cloudinary 업로드 자체를 막음
+        try:
+            incoming_hash = calculate_sha256_file(f)
+        except Exception as e:
+            return Response(
+                APIResponse.error("HASH_FAILED", f"해시 계산 실패: {e}"),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 이미 동일 파일이 있으면 스킵
+        if Photo.objects.filter(user=user, file_hash=incoming_hash, is_deleted=False).exists():
+            skipped_duplicates.append({
+                "filename": getattr(f, "name", "uploaded"),
+                "file_hash": incoming_hash,
+                "reason": "DUPLICATE_FILE_HASH",
+            })
+            continue
+
+        # 1) ✅ 원본 저장만
         meta = save_raw_uploaded_file(user, f)
 
-        # 2) ✅ Photo row 생성 (무거운 필드는 일단 비워둠)
+        # 2) ✅ Photo row 생성
         photo = Photo.objects.create(
             user=user,
             filename=meta["filename"],
             image=meta["storage_name"],  # Cloudinary key
             url=meta["url"],
-            file_size=meta["file_size"],
+            file_size=meta.get("file_size") or getattr(f, "size", None),
             category=unclassified_category,
             source="UPLOAD",
-            # 아래는 task가 채움
-            file_hash=None,
+            # ✅ 업로드 단계에서 file_hash를 채워두면 중복 방지가 즉시 가능해짐
+            file_hash=incoming_hash,
+            # 아래는 task가 채움(또는 보강)
             phash=None,
             dhash=None,
             ahash=None,
@@ -74,7 +94,7 @@ def upload_photos(request):
             taken_at=None,
         )
 
-        # 3) ✅ 비동기 후처리(해시/썸네일/중복검사/분류 트리거)
+        # 3) ✅ 비동기 후처리
         process_uploaded_photo.delay(photo.id)
 
         created.append(PhotoSerializer(photo).data)
@@ -83,6 +103,7 @@ def upload_photos(request):
         APIResponse.success(
             {
                 "created": created,
+                "skipped_duplicates": skipped_duplicates,
                 "message": "업로드 완료! 백그라운드에서 처리 중입니다.",
             }
         ),
