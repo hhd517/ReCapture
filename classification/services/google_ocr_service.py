@@ -1,95 +1,84 @@
-from google.cloud import vision
+# classification/services/google_ocr_service.py
+
 import os
-import io
-from typing import Tuple
+import json
+import base64
+from typing import Optional
 
-# ✅ HEIC 지원
-from PIL import Image
-from pillow_heif import register_heif_opener
-
-register_heif_opener()
+from google.cloud import vision
+from google.oauth2 import service_account
 
 
 class GoogleOCRService:
-    """Google Cloud Vision API OCR 서비스 (HEIC 지원 + 캐시 호환 유지)"""
+    """
+    Google Cloud Vision OCR Service
+    - ✅ 파일(classification/google_credentials.json) 없이 환경변수만으로 인증 가능
+    - 지원 환경변수 우선순위:
+        1) GOOGLE_CREDENTIALS_B64  (권장: 서비스계정 JSON 전체를 base64로 인코딩)
+        2) GOOGLE_CREDENTIALS_JSON (서비스계정 JSON 문자열)
+        3) GOOGLE_APPLICATION_CREDENTIALS (구글 표준: 파일 경로)
+    """
 
     def __init__(self):
-        print("🔧 Google Cloud Vision API 초기화 중...")
+        self.client = self._init_client()
 
-        current_dir = os.path.dirname(__file__)  # services 폴더
-        parent_dir = os.path.dirname(current_dir)  # classification 폴더
-        credentials_path = os.path.join(parent_dir, "google_credentials.json")
+    def _load_service_account_info(self) -> Optional[dict]:
+        b64 = os.getenv("GOOGLE_CREDENTIALS_B64", "").strip()
+        if b64:
+            try:
+                raw = base64.b64decode(b64).decode("utf-8")
+                return json.loads(raw)
+            except Exception as e:
+                raise RuntimeError(f"GOOGLE_CREDENTIALS_B64 디코딩/파싱 실패: {e}")
 
-        if not os.path.exists(credentials_path):
-            raise FileNotFoundError(
-                f"❌ google_credentials.json 파일이 없습니다!\n"
-                f"예상 경로: {credentials_path}\n"
-                f"STEP 6을 다시 확인하세요."
-            )
+        raw_json = os.getenv("GOOGLE_CREDENTIALS_JSON", "").strip()
+        if raw_json:
+            try:
+                return json.loads(raw_json)
+            except Exception as e:
+                raise RuntimeError(f"GOOGLE_CREDENTIALS_JSON 파싱 실패: {e}")
 
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
+        return None
 
-        try:
-            self.client = vision.ImageAnnotatorClient()
-            print("✅ Google Cloud Vision API 준비 완료!\n")
-        except Exception as e:
-            raise Exception(f"❌ Vision API 초기화 실패: {e}")
+    def _init_client(self) -> vision.ImageAnnotatorClient:
+        info = self._load_service_account_info()
 
-    def _read_image_bytes_for_vision(self, image_path: str) -> bytes:
-        """
-        Vision API 입력용 bytes 생성.
-        - jpg/png/webp 등: 그대로 bytes
-        - heic/heif: PIL로 열어서 JPEG로 인코딩한 bytes (Vision 호환 안정)
-        """
-        ext = os.path.splitext(image_path)[1].lower()
+        # 1) env JSON/B64가 있으면 그걸로 인증
+        if info is not None:
+            creds = service_account.Credentials.from_service_account_info(info)
+            return vision.ImageAnnotatorClient(credentials=creds)
 
-        if ext in (".heic", ".heif"):
-            # ✅ HEIC -> RGB -> JPEG bytes
-            img = Image.open(image_path).convert("RGB")
-            buf = io.BytesIO()
-            img.save(buf, format="JPEG", quality=95, optimize=True)
-            return buf.getvalue()
+        # 2) GOOGLE_APPLICATION_CREDENTIALS(파일 경로)가 있으면 구글 기본 방식 사용
+        #    (이 경우는 파일 기반이지만, 표준 env라서 fallback으로 허용)
+        gac = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
+        if gac:
+            # vision lib가 내부적으로 파일을 읽음
+            return vision.ImageAnnotatorClient()
 
-        # 기본: 원본 그대로
-        with io.open(image_path, "rb") as f:
-            return f.read()
-
-    def extract_text(self, image_path: str):
-        if not os.path.exists(image_path):
-            raise FileNotFoundError(f"❌ 이미지를 찾을 수 없습니다: {image_path}")
-
-        print(f"📸 이미지 분석 중: {os.path.basename(image_path)}")
-
-        content = self._read_image_bytes_for_vision(image_path)
-        image = vision.Image(content=content)
-
-        response = self.client.document_text_detection(
-            image=image,
-            image_context={"language_hints": ["ko", "en"]},
+        # 3) 아무 것도 없으면 명확하게 실패
+        raise FileNotFoundError(
+            "Google OCR 자격증명이 없습니다. "
+            "Render 환경변수에 GOOGLE_CREDENTIALS_B64(권장) 또는 GOOGLE_CREDENTIALS_JSON을 설정하세요."
         )
 
-        if response.error.message:
-            raise Exception(f"❌ Vision API 오류: {response.error.message}")
+    def extract_text(self, image_path: str) -> dict:
+        """
+        이미지에서 OCR 텍스트 추출
+        반환 포맷은 기존 코드가 기대하는 형태( dict with full_text )로 유지
+        """
+        with open(image_path, "rb") as f:
+            content = f.read()
 
-        if not response.full_text_annotation:
-            print("⚠️ 텍스트를 찾을 수 없습니다.")
-            return {"full_text": "", "lines": [], "confidences": []}
+        image = vision.Image(content=content)
+        response = self.client.text_detection(image=image)
 
-        full_text = response.full_text_annotation.text
+        if response.error and response.error.message:
+            raise RuntimeError(f"Vision OCR error: {response.error.message}")
 
-        lines = []
-        confidences = []
-        for page in response.full_text_annotation.pages:
-            for block in page.blocks:
-                block_text = ""
-                for paragraph in block.paragraphs:
-                    for word in paragraph.words:
-                        word_text = "".join([symbol.text for symbol in word.symbols])
-                        block_text += word_text + " "
-                if block_text.strip():
-                    lines.append(block_text.strip())
-                    confidences.append(block.confidence)
+        texts = response.text_annotations
+        full_text = texts[0].description if texts else ""
 
-        print(f"✅ 텍스트 추출 완료 ({len(lines)}개 블록)")
-
-        return {"full_text": full_text, "lines": lines, "confidences": confidences}
+        return {
+            "full_text": full_text,
+            "raw": [t.description for t in texts[:10]],
+        }
