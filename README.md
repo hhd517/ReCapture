@@ -38,7 +38,7 @@ Google Photos 연동, 로컬 파일 업로드, 카메라 촬영 등 다양한 �
 <table>
   <thead>
     <tr>
-      <th width="260">기능</th>
+      <th width="200">기능</th>
       <th>설명</th>
     </tr>
   </thead>
